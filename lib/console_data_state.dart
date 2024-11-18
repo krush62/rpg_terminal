@@ -5,6 +5,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rpg_terminal/answers.dart';
+import 'package:rpg_terminal/ship_status.dart';
 
 enum ConsoleState
 {
@@ -22,7 +23,9 @@ enum CharacterColor
   red,
   yellow,
   blue,
-  green
+  green,
+  purple,
+  gray
 }
 
 enum SoundType
@@ -58,16 +61,18 @@ class ConsoleDataState with ChangeNotifier
 
   bool firstRun = true;
   bool showsCursor = false;
-  final double fontSize = 32.0;
-  final TextStyle _defaultStyle = GoogleFonts.vt323();
-  late final Map<CharacterColor, TextStyle> _textStyleMap =
+  static final double fontSize = 32.0;
+  static final TextStyle _defaultStyle = GoogleFonts.vt323();
+  static final Map<CharacterColor, TextStyle> _textStyleMap =
   {
     CharacterColor.normal: _defaultStyle.copyWith(color: Color.fromARGB(255, 160, 150, 140), fontSize: fontSize),
+    CharacterColor.gray: _defaultStyle.copyWith(color: Color.fromARGB(255, 80, 70, 60), fontSize: fontSize),
     CharacterColor.orange: _defaultStyle.copyWith(color: Color.fromARGB(255, 180, 90, 20), fontSize: fontSize),
     CharacterColor.red: _defaultStyle.copyWith(color: Color.fromARGB(255, 200, 60, 40), fontSize: fontSize),
     CharacterColor.yellow: _defaultStyle.copyWith(color: Color.fromARGB(255, 180, 180, 40), fontSize: fontSize),
     CharacterColor.blue: _defaultStyle.copyWith(color: Color.fromARGB(255, 60, 70, 220), fontSize: fontSize),
     CharacterColor.green: _defaultStyle.copyWith(color: Color.fromARGB(255, 60, 140, 60), fontSize: fontSize),
+    CharacterColor.purple: _defaultStyle.copyWith(color: Color.fromARGB(255, 100, 00, 100), fontSize: fontSize),
   };
   late TextSpan _currentInput = TextSpan(style: _textStyleMap[CharacterColor.normal], text: "");
   final String _allowedCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890 ";
@@ -92,6 +97,8 @@ class ConsoleDataState with ChangeNotifier
     SoundType.startup: "sounds/BootUp.wav",
   };
 
+  final ShipStatus shipStatus = ShipStatus.defaultLayout();
+
   ConsoleDataState()
   {
     Timer.periodic(const Duration(milliseconds: 500), (timer) {
@@ -105,7 +112,7 @@ class ConsoleDataState with ChangeNotifier
     loadSamples();
   }
 
-  TextStyle getTextStyle(final CharacterColor color)
+  static TextStyle getTextStyle(final CharacterColor color)
   {
     return _textStyleMap[color] ?? _defaultStyle.copyWith(color: Color.fromARGB(255, 160, 150, 140), fontSize: fontSize);
   }
@@ -129,6 +136,13 @@ class ConsoleDataState with ChangeNotifier
     {
       _switchState(ConsoleState.output);
     }
+  }
+
+  void addDisplayDataLine({required final List<TextSpan> spanList})
+  {
+    _displayData.addAll(spanList);
+    _displayData.add(TextSpan(text: "\n", style: getTextStyle(CharacterColor.normal)));
+    notifyListeners();
   }
 
   void powerPressed()

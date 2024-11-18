@@ -1,4 +1,5 @@
 
+import 'package:flutter/material.dart';
 import 'package:rpg_terminal/console_data_state.dart';
 
 
@@ -22,6 +23,7 @@ class Answers
   [
     TerminalCommand(command: "help", description: "Show this help screen", function: addHelpMessage),
     TerminalCommand(command: "shutdown", description: "Shutdown of the system"),
+    TerminalCommand(command: "map", description: "Show the map of the ship", function: showMap)
   ];
 
   static void addHelpMessage(final ConsoleDataState state, String args)
@@ -45,6 +47,20 @@ class Answers
       }
       state.addOutputData(text: "${command.command}$spaces", color: CharacterColor.blue);
       state.addOutputData(text: "${command.description}\n", color: CharacterColor.normal);
+    }
+  }
+
+  static void showMap(final ConsoleDataState state, String args)
+  {
+    List<TextSpan> lineBreak = [
+      TextSpan(text: "\n", style: ConsoleDataState.getTextStyle(CharacterColor.normal))
+    ];
+  state.addDisplayDataLine(spanList: lineBreak);
+
+    final List<List<TextSpan>> shipData = state.shipStatus.getShipData();
+    for (final List<TextSpan> dataLine in shipData)
+    {
+      state.addDisplayDataLine(spanList: dataLine);
     }
   }
 

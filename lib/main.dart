@@ -9,8 +9,8 @@ import 'package:rpg_terminal/label_indicator.dart';
 import 'package:rpg_terminal/on_off_button.dart';
 import 'package:rpg_terminal/window_top_bar.dart';
 
-const double windowWidth = 1008;
-const double windowHeight = 788;
+const double windowWidth = 1000;
+const double windowHeight = 1000;
 
 void main() {
   runApp(const RPGTerminalApp());
@@ -49,7 +49,7 @@ class RPGTerminalApp extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(height: consolePadding, width: 1008, child: TheTopBar(color: windowBackgroundColor)),
+              SizedBox(height: consolePadding, width: windowWidth, child: TheTopBar(color: windowBackgroundColor)),
               //if (kIsWeb) Container(width: windowWidth, height: consolePadding, color: windowBackgroundColor),
               SizedBox(width: windowWidth, height: windowHeight - consolePadding - (2 * windowBorderWidth), child: const RPGTerminal(title: 'RPG Terminal')),
             ],
