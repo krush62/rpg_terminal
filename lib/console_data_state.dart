@@ -65,14 +65,14 @@ class ConsoleDataState with ChangeNotifier
   static final TextStyle _defaultStyle = GoogleFonts.vt323();
   static final Map<CharacterColor, TextStyle> _textStyleMap =
   {
-    CharacterColor.normal: _defaultStyle.copyWith(color: Color.fromARGB(255, 160, 150, 140), fontSize: fontSize),
+    CharacterColor.normal: _defaultStyle.copyWith(color: Color.fromARGB(255, 150, 140, 130), fontSize: fontSize),
     CharacterColor.gray: _defaultStyle.copyWith(color: Color.fromARGB(255, 80, 70, 60), fontSize: fontSize),
-    CharacterColor.orange: _defaultStyle.copyWith(color: Color.fromARGB(255, 180, 90, 20), fontSize: fontSize),
-    CharacterColor.red: _defaultStyle.copyWith(color: Color.fromARGB(255, 200, 60, 40), fontSize: fontSize),
-    CharacterColor.yellow: _defaultStyle.copyWith(color: Color.fromARGB(255, 180, 180, 40), fontSize: fontSize),
+    CharacterColor.orange: _defaultStyle.copyWith(color: Color.fromARGB(255, 160, 70, 20), fontSize: fontSize),
+    CharacterColor.red: _defaultStyle.copyWith(color: Color.fromARGB(255, 200, 40, 40), fontSize: fontSize),
+    CharacterColor.yellow: _defaultStyle.copyWith(color: Color.fromARGB(255, 130, 130, 40), fontSize: fontSize),
     CharacterColor.blue: _defaultStyle.copyWith(color: Color.fromARGB(255, 60, 70, 220), fontSize: fontSize),
-    CharacterColor.green: _defaultStyle.copyWith(color: Color.fromARGB(255, 60, 140, 60), fontSize: fontSize),
-    CharacterColor.purple: _defaultStyle.copyWith(color: Color.fromARGB(255, 100, 00, 100), fontSize: fontSize),
+    CharacterColor.green: _defaultStyle.copyWith(color: Color.fromARGB(255, 60, 120, 60), fontSize: fontSize),
+    CharacterColor.purple: _defaultStyle.copyWith(color: Color.fromARGB(255, 100, 40, 100), fontSize: fontSize),
   };
   late TextSpan _currentInput = TextSpan(style: _textStyleMap[CharacterColor.normal], text: "");
   final String _allowedCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890 ";
@@ -223,7 +223,7 @@ class ConsoleDataState with ChangeNotifier
     else if (_currentInput.text != null && _currentInput.text!.isNotEmpty)
     {
       addOutputData(text: "\nYou entered ", color: CharacterColor.normal);
-      addOutputData(text: _currentInput.text!, color: CharacterColor.blue);
+      addOutputData(text: _currentInput.text!, color: CharacterColor.purple);
     }
     if (_currentInput.text == "shutdown")
     {

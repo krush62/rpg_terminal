@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:rpg_terminal/console_data_state.dart';
+import 'package:rpg_terminal/ship_status.dart';
 
 
 
@@ -23,7 +24,9 @@ class Answers
   [
     TerminalCommand(command: "help", description: "Show this help screen", function: addHelpMessage),
     TerminalCommand(command: "shutdown", description: "Shutdown of the system"),
-    TerminalCommand(command: "map", description: "Show the map of the ship", function: showMap)
+    TerminalCommand(command: "map", description: "Show the map of the ship", function: showMap),
+    TerminalCommand(command: "open", description: "Open specified air lock", function: openLock),
+    TerminalCommand(command: "close", description: "Close specified air lock", function: closeLock),
   ];
 
   static void addHelpMessage(final ConsoleDataState state, String args)
@@ -45,7 +48,7 @@ class Answers
       {
         spaces += " ";
       }
-      state.addOutputData(text: "${command.command}$spaces", color: CharacterColor.blue);
+      state.addOutputData(text: "${command.command}$spaces", color: CharacterColor.purple);
       state.addOutputData(text: "${command.description}\n", color: CharacterColor.normal);
     }
   }
@@ -62,6 +65,65 @@ class Answers
     {
       state.addDisplayDataLine(spanList: dataLine);
     }
+  }
+
+
+
+  static void openLock(final ConsoleDataState state, String args)
+  {
+    AirLock? lock = state.shipStatus.getLockByName(args);
+    if (lock == null)
+    {
+      state.addOutputData(text: "\nCould not find air lock with name ", color: CharacterColor.normal);
+      state.addOutputData(text: args, color: CharacterColor.purple);
+      state.addOutputData(text: ".", color: CharacterColor.normal);
+    }
+    else
+    {
+      if (lock.isOpen)
+      {
+        state.addOutputData(text: "\nAir lock ", color: CharacterColor.normal);
+        state.addOutputData(text: lock.id, color: CharacterColor.purple);
+        state.addOutputData(text: " is already open.", color: CharacterColor.normal);
+      }
+      else
+      {
+        state.addOutputData(text: "\nOpened air lock ", color: CharacterColor.normal);
+        state.addOutputData(text: lock.id, color: CharacterColor.purple);
+        state.addOutputData(text: ".", color: CharacterColor.normal);
+        lock.isOpen = true;
+        state.shipStatus.updateShipData();
+      }
+    }
+  }
+
+  static void closeLock(final ConsoleDataState state, String args)
+  {
+    AirLock? lock = state.shipStatus.getLockByName(args);
+    if (lock == null)
+    {
+      state.addOutputData(text: "\nCould not find air lock with name ", color: CharacterColor.normal);
+      state.addOutputData(text: args, color: CharacterColor.purple);
+      state.addOutputData(text: ".", color: CharacterColor.normal);
+    }
+    else
+    {
+      if (!lock.isOpen)
+      {
+        state.addOutputData(text: "\nAir lock ", color: CharacterColor.normal);
+        state.addOutputData(text: lock.id, color: CharacterColor.purple);
+        state.addOutputData(text: " is already closed.", color: CharacterColor.normal);
+      }
+      else
+      {
+        state.addOutputData(text: "\nClosed air lock ", color: CharacterColor.normal);
+        state.addOutputData(text: lock.id, color: CharacterColor.purple);
+        state.addOutputData(text: ".", color: CharacterColor.normal);
+        lock.isOpen = false;
+        state.shipStatus.updateShipData();
+      }
+    }
+
   }
 
   static TerminalCommand? getCommand(String inputLine)
@@ -101,20 +163,9 @@ class Answers
     addBigHeader(state);
     state.addOutputData(text: "\nWelcome to the Mothership Control System (MCS) v6.2\n", color: CharacterColor.green);
     state.addOutputData(text: "Enter your command. Type ", color: CharacterColor.normal);
-    state.addOutputData(text: "help", color: CharacterColor.blue);
+    state.addOutputData(text: "help", color: CharacterColor.purple);
     state.addOutputData(text: " for a list of available commands.\n", color: CharacterColor.normal);
   }
-
-  static void addSmallHeader(final ConsoleDataState state)
-  {
-    state.addOutputData(text: "     _/\\/\\______/\\/\\____/\\/\\/\\/\\/\\____/\\/\\/\\/\\/\\_\n", color: CharacterColor.yellow, singleCharacterMode: false);
-    state.addOutputData(text: "    _/\\/\\/\\__/\\/\\/\\__/\\/\\__________/\\/\\_________\n", color: CharacterColor.yellow, singleCharacterMode: false);
-    state.addOutputData(text: "   _/\\/\\/\\/\\/\\/\\/\\__/\\/\\____________/\\/\\/\\/\\___\n", color: CharacterColor.orange, singleCharacterMode: false);
-    state.addOutputData(text: "  _/\\/\\__/\\__/\\/\\__/\\/\\__________________/\\/\\_\n", color: CharacterColor.orange, singleCharacterMode: false);
-    state.addOutputData(text: " _/\\/\\______/\\/\\____/\\/\\/\\/\\/\\__/\\/\\/\\/\\/\\___\n", color: CharacterColor.red, singleCharacterMode: false);
-    state.addOutputData(text: "____________________________________________\n", color: CharacterColor.red, singleCharacterMode: false);
-  }
-
 
   static void addBigHeader(final ConsoleDataState state)
   {

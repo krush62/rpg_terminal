@@ -15,20 +15,23 @@ class Room
   final Point2D position;
   bool hasEnergy;
   bool hasOxygen;
+  bool isOutside;
 
   Room({
     required this.name,
     required this.position,
     this.hasEnergy = false,
     this.hasOxygen = false,
+    this.isOutside = false
   });
 }
 
 class AirLock
 {
   final String name;
-  final Room? room1;
-  final Room? room2;
+  final String id;
+  final Room room1;
+  final Room room2;
   bool isOpen;
   bool isVertical;
   final Point2D lockPos;
@@ -42,7 +45,7 @@ class AirLock
     required this.isOpen,
     required this.isVertical,
     required this.lockPos,
-    required this.labelPos}) : length = isVertical ? 2 : 4;
+    required this.labelPos}) : length = isVertical ? 2 : 4, id = name.replaceAll(RegExp(r"[^\w\d]+"), "");
 }
 
 
@@ -62,7 +65,8 @@ class ShipStatus
     final Room storage = Room(name: "STORAGE", position: Point2D(x: 44, y: 10));
     final Room cpu = Room(name: "CPU", position: Point2D(x: 45, y: 15), hasEnergy: true, hasOxygen: true);
     final Room engine = Room(name: "E\nN\nG\nI\nN\nE", position: Point2D(x: 57, y: 9));
-    final List<Room> rooms = [crew, bridge, cafe, corridor, storage, cpu, engine];
+    final Room outside = Room(name: "", position: Point2D(x: 48, y: 5), isOutside: true);
+    final List<Room> rooms = [crew, bridge, cafe, corridor, storage, cpu, engine, outside];
 
     final List<AirLock> locks =
     [
@@ -72,7 +76,7 @@ class ShipStatus
       AirLock(name: "LK\n04", room1: corridor, room2: storage, isOpen: true, isVertical: true, lockPos: Point2D(x: 38, y: 11), labelPos: Point2D(x: 39, y: 11)),
       AirLock(name: "LK\n05", room1: storage, room2: engine, isOpen: true, isVertical: true, lockPos: Point2D(x: 54, y: 8), labelPos: Point2D(x: 52, y: 8)),
       AirLock(name: "LK06", room1: storage, room2: cpu, isOpen: false, isVertical: false, lockPos: Point2D(x: 50, y: 13), labelPos: Point2D(x: 50, y: 14)),
-      AirLock(name: "LK07", room1: storage, room2: null, isOpen: true, isVertical: false, lockPos: Point2D(x: 45, y: 6), labelPos: Point2D(x: 45, y: 7)),
+      AirLock(name: "LK07", room1: storage, room2: outside, isOpen: true, isVertical: false, lockPos: Point2D(x: 45, y: 6), labelPos: Point2D(x: 45, y: 7)),
     ];
 
     return ShipStatus(rooms: rooms, locks: locks);
@@ -94,6 +98,31 @@ class ShipStatus
       List<TextSpan> newLine = [];
       newLine.addAll(line);
       _shipData.add(newLine);
+    }
+
+    final List<List<Room>> connectedRooms = _getConnectedAreas(rooms, locks);
+
+    for (final List<Room> area in connectedRooms)
+    {
+      if (area.length > 1)
+      {
+        final bool hasOutsideRoom = area.where((r) => r.isOutside).isNotEmpty;
+        final bool hasOxygenRoom = area.where((r) => r.hasOxygen).isNotEmpty;
+        if (hasOutsideRoom)
+        {
+          for (final Room r in area)
+          {
+            r.hasOxygen = false;
+          }
+        }
+        else if (hasOxygenRoom)
+        {
+          for (final Room r in area)
+          {
+            r.hasOxygen = true;
+          }
+        }
+      }
     }
 
     //rooms
@@ -312,7 +341,70 @@ class ShipStatus
     return spanList;
   }
 
+  AirLock? getLockByName(final String lockName)
+  {
+    return locks.where((l) => l.id.toUpperCase() == lockName.toUpperCase()).firstOrNull;
+  }
 
+  static List<List<Room>> _getConnectedAreas(final List<Room> rooms, final List<AirLock> locks)
+  {
+    // Build an adjacency list for the graph
+    final Map<Room, List<Room>> adjacencyList = {};
+    for (var room in rooms) {
+      adjacencyList[room] = [];
+    }
 
+    // Add edges for open connections
+    for (final AirLock lock in locks) {
+      if (lock.isOpen && lock.room1 != null && lock.room2 != null) {
+        adjacencyList[lock.room1]!.add(lock.room2!);
+        adjacencyList[lock.room2]!.add(lock.room1!);
+      }
+    }
 
+    // To store visited rooms
+    final Set<Room> visited = {};
+    final List<List<Room>> connectedAreas = [];
+
+    // Helper function for DFS
+    void dfs(Room room, List<Room> currentArea) {
+      visited.add(room);
+      currentArea.add(room);
+      for (var neighbor in adjacencyList[room]!) {
+        if (!visited.contains(neighbor)) {
+          dfs(neighbor, currentArea);
+        }
+      }
+    }
+
+    // Find all connected components
+    for (var room in rooms) {
+      if (!visited.contains(room)) {
+        final List<Room> currentArea = [];
+        dfs(room, currentArea);
+        connectedAreas.add(currentArea);
+      }
+    }
+
+    return connectedAreas;
+  }
+
+  void getCollectionFromRoom(final List<Room> collection, final Room room)
+  {
+    locks.where((l) => l.room1 == room || l.room2 == room).toList();
+  }
+
+  bool roomIsInACollection(final List<List<Room>> collection, final Room r)
+  {
+    bool isInCollection = false;
+    for (final List<Room> roomList in collection)
+    {
+      if (roomList.contains(r))
+      {
+        isInCollection = true;
+        break;
+      }
+    }
+    return isInCollection;
+  }
 }
