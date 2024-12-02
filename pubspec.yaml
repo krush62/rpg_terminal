@@ -71,8 +71,12 @@ flutter:
     - assets/sounds/Shutdown.wav
     - assets/images/Startup.png
     - assets/images/Shutdown.png
+    - assets/levels/level1.txt
 
   fonts:
     - family: Argon
       fonts:
         - asset: assets/fonts/ArgonPERSONAL-Regular.otf
+    - family: ModernDos
+      fonts:
+        - asset: assets/fonts/ModernDOS8x16.ttf

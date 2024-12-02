@@ -1,6 +1,9 @@
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:rpg_terminal/console_data_state.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 class Point2D
 {
@@ -9,326 +12,829 @@ class Point2D
   Point2D({required this.x, required this.y});
 }
 
+enum RoomType
+{
+  noRoom,
+  general
+}
+
+const Map<int, RoomType> intRoomMap =
+{
+  0: RoomType.noRoom,
+  1: RoomType.general
+};
+
 class Room
 {
   final String name;
-  final Point2D position;
-  bool hasEnergy;
-  bool hasOxygen;
-  bool isOutside;
+  final AirLock? airLockTop;
+  final AirLock? airLockRight;
+  final AirLock? airLockLeft;
+  final AirLock? airLockBottom;
+  final RoomType roomType;
+  final bool isDetected;
 
-  Room({
+  const Room({
     required this.name,
-    required this.position,
-    this.hasEnergy = false,
-    this.hasOxygen = false,
-    this.isOutside = false
+    this.airLockTop,
+    this.airLockRight,
+    this.airLockLeft,
+    this.airLockBottom,
+    this.isDetected = true,
+    required this.roomType,
   });
+
+  bool hasAirlock(final AirLock lock)
+  {
+    return (airLockTop == lock || airLockLeft == lock || airLockBottom == lock || airLockRight == lock);
+  }
+
+  bool shouldBeVisible()
+  {
+    return (isDetected && roomType != RoomType.noRoom);
+  }
 }
 
 class AirLock
 {
-  final String name;
-  final String id;
-  final Room room1;
-  final Room room2;
   bool isOpen;
-  bool isVertical;
-  final Point2D lockPos;
-  final Point2D labelPos;
-  final int length;
 
   AirLock({
-    required this.name,
-    required this.room1,
-    required this.room2,
     required this.isOpen,
-    required this.isVertical,
-    required this.lockPos,
-    required this.labelPos}) : length = isVertical ? 2 : 4, id = name.replaceAll(RegExp(r"[^\w\d]+"), "");
+  });
+
 }
 
+class Character
+{
+  Room? currentRoom;
+  static const drawingChar = "☺";
+
+  Character({
+    this.currentRoom,
+  });
+}
+
+class Entity
+{
+  Room? currentRoom;
+  static const drawingChar = "☼";
+
+  Entity({
+    this.currentRoom,
+  });
+}
 
 class ShipStatus
 {
-  final List<Room> rooms;
-  final List<AirLock> locks;
-  static final List<List<TextSpan>> _pureShipData = _getShip();
+  final List<List<Room>> rooms;
+  final Character character;
+  final List<Entity> entities;
   final List<List<TextSpan>> _shipData = [];
+  static const int roomHeight = 5;
+  static const int horizontalLockWidth = 3;
+  static const int verticalLockHeight = 1;
+  static const String letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
   factory ShipStatus.defaultLayout()
   {
-    final Room crew = Room(name: "  CREW  \nQUARTERS", position: Point2D(x: 8, y: 3), hasOxygen: true);
-    final Room bridge = Room(name: " MAIN \nBRIDGE", position: Point2D(x: 11, y: 11));
-    final Room cafe = Room(name: "CAFE &\nGALLEY", position: Point2D(x: 9, y: 19));
-    final Room corridor = Room(name: "C\nO\nR\nR\nI\nD\nO\nR", position: Point2D(x: 35, y: 8));
-    final Room storage = Room(name: "STORAGE", position: Point2D(x: 44, y: 10));
-    final Room cpu = Room(name: "CPU", position: Point2D(x: 45, y: 15), hasEnergy: true, hasOxygen: true);
-    final Room engine = Room(name: "E\nN\nG\nI\nN\nE", position: Point2D(x: 57, y: 9));
-    final Room outside = Room(name: "", position: Point2D(x: 48, y: 5), isOutside: true);
-    final List<Room> rooms = [crew, bridge, cafe, corridor, storage, cpu, engine, outside];
+    //horizontal
+    final AirLock a1b1 = AirLock(isOpen: false);
+    final AirLock b1c1 = AirLock(isOpen: true);
+    final AirLock a2b2 = AirLock(isOpen: false);
+    final AirLock b2c2 = AirLock(isOpen: false);
+    final AirLock a3b3 = AirLock(isOpen: true);
+    final AirLock b3c3 = AirLock(isOpen: false);
+    //vertical
+    final AirLock a1a2 = AirLock(isOpen: true);
+    final AirLock a2a3 = AirLock(isOpen: false);
+    final AirLock b1b2 = AirLock(isOpen: false);
+    final AirLock b2b3 = AirLock(isOpen: true);
+    final AirLock c1c2 = AirLock(isOpen: false);
+    final AirLock c2c3 = AirLock(isOpen: false);
 
-    final List<AirLock> locks =
-    [
-      AirLock(name: "LK01", room1: crew, room2: bridge, isOpen: false, isVertical: false, lockPos: Point2D(x: 10, y: 7), labelPos: Point2D(x: 10, y: 8)),
-      AirLock(name: "LK02", room1: cafe, room2: bridge, isOpen: true, isVertical: false, lockPos: Point2D(x: 10, y: 16), labelPos: Point2D(x: 10, y: 17)),
-      AirLock(name: "LK\n03", room1: corridor, room2: bridge, isOpen: true, isVertical: true, lockPos: Point2D(x: 22, y: 11), labelPos: Point2D(x: 23, y: 11)),
-      AirLock(name: "LK\n04", room1: corridor, room2: storage, isOpen: true, isVertical: true, lockPos: Point2D(x: 38, y: 11), labelPos: Point2D(x: 39, y: 11)),
-      AirLock(name: "LK\n05", room1: storage, room2: engine, isOpen: true, isVertical: true, lockPos: Point2D(x: 54, y: 8), labelPos: Point2D(x: 52, y: 8)),
-      AirLock(name: "LK06", room1: storage, room2: cpu, isOpen: false, isVertical: false, lockPos: Point2D(x: 50, y: 13), labelPos: Point2D(x: 50, y: 14)),
-      AirLock(name: "LK07", room1: storage, room2: outside, isOpen: true, isVertical: false, lockPos: Point2D(x: 45, y: 6), labelPos: Point2D(x: 45, y: 7)),
-    ];
+    final AirLock c2Outside = AirLock(isOpen: false);
+    final AirLock b3Outside = AirLock(isOpen: false);
 
-    return ShipStatus(rooms: rooms, locks: locks);
+    //row1
+    final Room a1 = Room(name: "CABINS", roomType: RoomType.general, airLockRight: a1b1, airLockBottom: a1a2);
+    final Room b1 = Room(name: "KITCHEN", roomType: RoomType.noRoom, airLockLeft: a1b1, airLockBottom: b1b2, airLockRight: b1c1);
+    final Room c1 = Room(name: "DORM", roomType: RoomType.noRoom, airLockLeft: b1c1, airLockBottom: c1c2);
+    //row2
+    final Room a2 = Room(name: "BLA", roomType: RoomType.noRoom, airLockRight: a2b2, airLockBottom: a2a3, airLockTop: a1a2);
+    final Room b2 = Room(name: "BBBB2", roomType: RoomType.general, airLockLeft: a2b2, airLockBottom: b2b3, airLockRight: b2c2, airLockTop: b1b2);
+    final Room c2 = Room(name: "CCC2", roomType: RoomType.general, airLockLeft: b2c2, airLockBottom: c2c3, airLockTop: c1c2, airLockRight: c2Outside);
+    //row3
+    final Room a3 = Room(name: "AAAA3", roomType: RoomType.general, airLockRight: a3b3, airLockTop: a2a3);
+    final Room b3 = Room(name: "BBBB3", roomType: RoomType.noRoom, airLockLeft: a3b3, airLockRight: b3c3, airLockTop: b2b3, airLockBottom: b3Outside);
+    final Room c3 = Room(name: "CC3", roomType: RoomType.noRoom, airLockLeft: b3c3, airLockTop: c2c3);
+
+    final List<Room> row1 = [a1, b1, c1];
+    final List<Room> row2 = [a2, b2, c2];
+    final List<Room> row3 = [a3, b3, c3];
+
+
+    final Character character = Character(currentRoom: c2);
+    final Entity entity = Entity(currentRoom: c3);
+    final List<Entity> entities = [entity];
+
+    return ShipStatus(rooms: [row1, row2, row3], character: character, entities: entities);
   }
+
+  factory ShipStatus.fromFileData(String fileData)
+  {
+    final LineSplitter ls = LineSplitter();
+    final List<String> fileLines = ls.convert(fileData);
+    int? width;
+    int? height;
+    Character? character = null;
+    final List<Entity> entities = [];
+    final List<List<Room>> rooms = [];
+
+    for (final String line in fileLines)
+    {
+      if (!line.startsWith("#"))
+      {
+        final List<String> split = line.split("|");
+        if (split.isNotEmpty && split[0].length == 1)
+        {
+          if (split[0] == "W" && split.length == 2)
+          {
+            width = int.tryParse(split[1]);
+          }
+          else if (split[0] == "H" && split.length == 2)
+          {
+            height = int.tryParse(split[1]);
+          }
+          else if (split[0] == "C" && split.length == 3 && split[1].length == 1 && letters.contains(split[1]) && int.tryParse(split[2]) != null)
+          {
+            if (width != null && height != null && rooms.isNotEmpty)
+            {
+              if (character == null)
+              {
+                final int colIndex = letters.indexOf(split[1]);
+                final int rowIndex = int.parse(split[2]) - 1;
+                if (colIndex < 0 || colIndex > width - 1 || rowIndex < 0 || rowIndex > height - 1)
+                {
+                  print("CHARACTER LOCATION OUT OF BOUNDS!");
+                  break;
+                }
+                else if (rooms[rowIndex][colIndex].roomType != RoomType.noRoom)
+                {
+                   character = Character(currentRoom: rooms[rowIndex][colIndex]);
+                }
+                else
+                {
+                  print("CHARACTER MUST BE IN VALID ROOM!");
+                  break;
+                }
+              }
+              else
+              {
+                print("ONLY ONE CHARACTER CAN BE DEFINED!!");
+                break;
+              }
+            }
+            else
+            {
+              print("DIMENSIONS AND ROOMS MUST BE DEFINED BEFORE CHARACTER!");
+              break;
+            }
+          }
+          else if (split[0] == "E" && split.length == 3 && split[1].length == 1 && letters.contains(split[1]) && int.tryParse(split[2]) != null)
+          {
+            if (width != null && height != null && rooms.isNotEmpty)
+            {
+              final int colIndex = letters.indexOf(split[1]);
+              final int rowIndex = int.parse(split[2]) - 1;
+              if (colIndex < 0 || colIndex > width - 1 || rowIndex < 0 || rowIndex > height - 1)
+              {
+                print("ENTITY LOCATION OUT OF BOUNDS!");
+                break;
+              }
+              else if (rooms[rowIndex][colIndex].roomType != RoomType.noRoom)
+              {
+                entities.add(Entity(currentRoom: rooms[rowIndex][colIndex]));
+              }
+              else
+              {
+                print("ENTITY MUST BE IN VALID ROOM!");
+                break;
+              }
+            }
+            else
+            {
+              print("DIMENSIONS AND ROOMS MUST BE DEFINED BEFORE ENTITIES!");
+              break;
+            }
+          }
+          else if (split[0] == "R" && split.length == 6 && split[2].length == 1 && letters.contains(split[2]) && int.tryParse(split[3]) != null && int.tryParse(split[4]) != null && split[5].length == 4 && int.tryParse(split[5]) != null)
+          {
+            if (width != null && height != null)
+            {
+              if (rooms.isEmpty)
+              {
+                for (int i = 0; i < height; i++)
+                {
+                  final List<Room> row = [];
+                  for (int j = 0; j < width; j++)
+                  {
+                    row.add(Room(name: "", roomType: RoomType.noRoom));
+                  }
+                  rooms.add(row);
+                }
+              }
+              final int colIndex = letters.indexOf(split[2]);
+              final int rowIndex = int.parse(split[3]) - 1;
+
+              AirLock? airlockLeft = (split[5][0] == "1" || split[5][0] == "2") ? AirLock(isOpen: split[5][0] == "1" ? false : true) : null;
+              if (colIndex > 0 && rooms[rowIndex][colIndex - 1].roomType != RoomType.noRoom)
+              {
+                if ((rooms[rowIndex][colIndex - 1].airLockRight != null && airlockLeft == null) ||
+                    (rooms[rowIndex][colIndex - 1].airLockRight == null && airlockLeft != null) ||
+                    (rooms[rowIndex][colIndex - 1].airLockRight != null && airlockLeft != null && rooms[rowIndex][colIndex - 1].airLockRight!.isOpen != airlockLeft.isOpen))
+                {
+                   print("AIRLOCK INCONSISTENCY DETECTED!!");
+                   break;
+                }
+                else
+                {
+                  airlockLeft = rooms[rowIndex][colIndex - 1].airLockRight;
+                }
+              }
+
+              AirLock? airlockTop = (split[5][1] == "1" || split[5][1] == "2") ? AirLock(isOpen: split[5][1] == "1" ? false : true) : null;
+              if (rowIndex > 0 && rooms[rowIndex - 1][colIndex].roomType != RoomType.noRoom)
+              {
+                if ((rooms[rowIndex - 1][colIndex].airLockBottom != null && airlockTop == null) ||
+                    (rooms[rowIndex - 1][colIndex].airLockBottom == null && airlockTop != null) ||
+                    (rooms[rowIndex - 1][colIndex].airLockBottom != null && airlockTop != null && rooms[rowIndex - 1][colIndex].airLockBottom!.isOpen != airlockTop.isOpen))
+                {
+                  print("AIRLOCK INCONSISTENCY DETECTED!!");
+                  break;
+                }
+                else
+                {
+                  airlockTop = rooms[rowIndex - 1][colIndex].airLockBottom;
+                }
+              }
+
+              AirLock? airlockRight = (split[5][2] == "1" || split[5][2] == "2") ? AirLock(isOpen: split[5][2] == "1" ? false : true) : null;
+              if (colIndex < width - 1 && rooms[rowIndex][colIndex + 1].roomType != RoomType.noRoom)
+              {
+                if ((rooms[rowIndex][colIndex + 1].airLockLeft != null && airlockRight == null) ||
+                    (rooms[rowIndex][colIndex + 1].airLockLeft == null && airlockRight != null) ||
+                    (rooms[rowIndex][colIndex + 1].airLockLeft != null && airlockRight != null && rooms[rowIndex][colIndex + 1].airLockLeft!.isOpen != airlockRight.isOpen))
+                {
+                  print("AIRLOCK INCONSISTENCY DETECTED!!");
+                  break;
+                }
+                else
+                {
+                  airlockRight = rooms[rowIndex][colIndex + 1].airLockLeft;
+                }
+              }
+
+              AirLock? airlockBottom = (split[5][3] == "1" || split[5][3] == "2") ? AirLock(isOpen: split[5][3] == "1" ? false : true) : null;
+              if (rowIndex < height - 1 && rooms[rowIndex + 1][colIndex].roomType != RoomType.noRoom)
+              {
+                if ((rooms[rowIndex + 1][colIndex].airLockTop != null && airlockBottom == null) ||
+                    (rooms[rowIndex + 1][colIndex].airLockTop == null && airlockBottom != null) ||
+                    (rooms[rowIndex + 1][colIndex].airLockTop != null && airlockBottom != null && rooms[rowIndex + 1][colIndex].airLockTop!.isOpen != airlockBottom.isOpen))
+                {
+                  print("AIRLOCK INCONSISTENCY DETECTED!!");
+                  break;
+                }
+                else
+                {
+                  airlockBottom = rooms[rowIndex + 1][colIndex].airLockTop;
+                }
+              }
+
+              final RoomType type = intRoomMap[int.parse(split[4])] ?? RoomType.general;
+              final Room room = Room(roomType: type, name: split[1], isDetected: true, airLockBottom: airlockBottom, airLockRight: airlockRight, airLockTop: airlockTop, airLockLeft: airlockLeft);
+              rooms[rowIndex][colIndex] = room;
+
+            }
+            else
+            {
+              print("SPECIFY DIMENSIONS BEFORE ADDING ROOMS");
+              break;
+            }
+          }
+          else
+          {
+            print("Unknown line found: $line");
+          }
+        }
+      }
+
+    }
+    if (character == null)
+    {
+      print("NO CHARACTER SPECIFIED!");
+
+    }
+    return ShipStatus(rooms: rooms, character: character!, entities: entities);
+
+
+  }
+
 
   ShipStatus({
     required this.rooms,
-    required this.locks,
+    required this.character,
+    required this.entities
   })
   {
     updateShipData();
   }
 
+  bool hasEntityInRoom(final Room r)
+  {
+    for (final Entity e in entities)
+    {
+      if (e.currentRoom == r)
+      {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  List<Room> getNeighbouringRooms(bool mustBeOpen)
+  {
+    final List<Room> neighborRooms = [];
+    if (character.currentRoom != null)
+    {
+      final List<Room> currentRow = rooms.where((row) => row.contains(character.currentRoom!)).first;
+      final int currentRowIndex = rooms.indexOf(currentRow);
+      final int currentRoomIndex = currentRow.indexOf(character.currentRoom!);
+
+      if (character.currentRoom!.airLockLeft != null && currentRoomIndex > 0 && rooms[currentRowIndex][currentRoomIndex - 1].airLockRight != null && rooms[currentRowIndex][currentRoomIndex - 1].airLockRight == character.currentRoom!.airLockLeft && (!mustBeOpen || character.currentRoom!.airLockLeft!.isOpen))
+      {
+        neighborRooms.add(rooms[currentRowIndex][currentRoomIndex - 1]);
+      }
+      if (character.currentRoom!.airLockRight != null && currentRoomIndex < rooms[currentRowIndex].length - 1 && rooms[currentRowIndex][currentRoomIndex + 1].airLockLeft != null && rooms[currentRowIndex][currentRoomIndex + 1].airLockLeft == character.currentRoom!.airLockRight && (!mustBeOpen || character.currentRoom!.airLockRight!.isOpen))
+      {
+        neighborRooms.add(rooms[currentRowIndex][currentRoomIndex + 1]);
+      }
+      if (character.currentRoom!.airLockTop != null && currentRowIndex > 0 && rooms[currentRowIndex - 1].length > currentRoomIndex && rooms[currentRowIndex - 1][currentRoomIndex].airLockBottom != null && rooms[currentRowIndex - 1][currentRoomIndex].airLockBottom == character.currentRoom!.airLockTop && (!mustBeOpen || character.currentRoom!.airLockTop!.isOpen))
+      {
+        neighborRooms.add(rooms[currentRowIndex - 1][currentRoomIndex]);
+      }
+      if (character.currentRoom!.airLockBottom != null && currentRowIndex < rooms.length - 1  && rooms[currentRowIndex + 1].length > currentRoomIndex && rooms[currentRowIndex + 1][currentRoomIndex].airLockTop != null && rooms[currentRowIndex + 1][currentRoomIndex].airLockTop == character.currentRoom!.airLockBottom && (!mustBeOpen || character.currentRoom!.airLockBottom!.isOpen))
+      {
+        neighborRooms.add(rooms[currentRowIndex + 1][currentRoomIndex]);
+      }
+    }
+    return neighborRooms;
+  }
+
+  Room? getRoomByName({required final String roomName, final bool useIndexOnly = false})
+  {
+    if (!useIndexOnly)
+    {
+      //name based search
+      for (final List<Room> row in rooms)
+      {
+        final Room? r = row.where((room) => room.name.toUpperCase() == roomName.toUpperCase()).firstOrNull;
+        if (r != null)
+        {
+          return r;
+        }
+      }
+    }
+    //index based search
+    for (int i = 0; i < rooms.length; i++)
+    {
+      for (int j = 0; j < rooms[i].length; j++)
+      {
+        final String coordName = letters[j] + (i + 1).toString();
+        if (coordName.toUpperCase() == roomName.toUpperCase())
+        {
+          return rooms[i][j];
+        }
+      }
+    }
+
+
+    return null;
+  }
+
   void updateShipData()
   {
     _shipData.clear();
-    for (final List<TextSpan> line in _pureShipData)
-    {
-      List<TextSpan> newLine = [];
-      newLine.addAll(line);
-      _shipData.add(newLine);
-    }
 
-    final List<List<Room>> connectedRooms = _getConnectedAreas(rooms, locks);
 
-    for (final List<Room> area in connectedRooms)
+   //COLUMN WIDTHS
+   //DIRTY!
+   final List<int> colWidths = List.filled(256, horizontalLockWidth);
+    for (final List<Room> row in rooms)
     {
-      if (area.length > 1)
+      for (int i = 0; i < row.length; i++)
       {
-        final bool hasOutsideRoom = area.where((r) => r.isOutside).isNotEmpty;
-        final bool hasOxygenRoom = area.where((r) => r.hasOxygen).isNotEmpty;
-        if (hasOutsideRoom)
+        if (row[i].roomType != RoomType.noRoom)
         {
-          for (final Room r in area)
+          final int potVal = row[i].name.length + 2;
+          if (potVal > colWidths[i])
           {
-            r.hasOxygen = false;
-          }
-        }
-        else if (hasOxygenRoom)
-        {
-          for (final Room r in area)
-          {
-            r.hasOxygen = true;
+            colWidths[i] = potVal;
           }
         }
       }
     }
 
-    //rooms
-    for (final Room room in rooms)
+
+    for (final List<Room> row in rooms)
     {
-      TextStyle roomStyle;
-      if (room.hasEnergy && room.hasOxygen)
+      //HORIZONTAL LEGEND
+      if (row == rooms.first)
       {
-        roomStyle = ConsoleDataState.getTextStyle(CharacterColor.green);
-      }
-      else if (room.hasEnergy && !room.hasOxygen)
-      {
-        roomStyle = ConsoleDataState.getTextStyle(CharacterColor.yellow);
-      }
-      else if (!room.hasEnergy && room.hasOxygen)
-      {
-        roomStyle = ConsoleDataState.getTextStyle(CharacterColor.blue);
-      }
-      else //if (!room.hasEnergy && !room.hasOxygen)
-      {
-        roomStyle = ConsoleDataState.getTextStyle(CharacterColor.red);
-      }
-
-
-      final Point2D curPos = Point2D(x: room.position.x, y: room.position.y);
-      for (final String char in room.name.characters)
-      {
-        if (char == "\n")
+        final List<TextSpan> legendLine = [];
+        legendLine.addAll(_getTextSpan("  ", ConsoleDataState.getTextStyle(CharacterColor.gray)));
+        for (int i = 0; i < row.length; i++)
         {
-          curPos.y++;
-          curPos.x = room.position.x;
+          if (i != 0)
+          {
+            legendLine.addAll(_getTextSpan("│", ConsoleDataState.getTextStyle(CharacterColor.gray)));
+          }
+          else
+          {
+            legendLine.addAll(_getTextSpan(" ", ConsoleDataState.getTextStyle(CharacterColor.gray)));
+          }
+          final int availableSpace = colWidths[i] - 1;
+          final int space1 = availableSpace ~/ 2;
+          final int space2 = availableSpace - space1;
+          legendLine.addAll(_getTextSpan(" " * space1, ConsoleDataState.getTextStyle(CharacterColor.gray)));
+          legendLine.addAll(_getTextSpan(letters[i], ConsoleDataState.getTextStyle(CharacterColor.gray)));
+          legendLine.addAll(_getTextSpan(" " * space2, ConsoleDataState.getTextStyle(CharacterColor.gray)));
+        }
+        _shipData.add(legendLine);
+      }
+
+
+
+
+      for (int drawingRowIndex = 0; drawingRowIndex < (roomHeight - 1); drawingRowIndex++)
+      {
+        final List<TextSpan> line = [];
+
+        //VERTICAL LEGEND
+        if (row != rooms.first && drawingRowIndex == 0)
+        {
+          line.addAll(_getTextSpan("─ ", ConsoleDataState.getTextStyle(CharacterColor.gray)));
+        }
+        else if (drawingRowIndex == roomHeight ~/ 2)
+        {
+          final int rowIndex = rooms.indexOf(row) + 1;
+          line.addAll(_getTextSpan("$rowIndex ", ConsoleDataState.getTextStyle(CharacterColor.gray)));
         }
         else
         {
-          _shipData[curPos.y][curPos.x] = TextSpan(text: char, style: roomStyle);
-          curPos.x++;
+          line.addAll(_getTextSpan("  ", ConsoleDataState.getTextStyle(CharacterColor.gray)));
         }
+
+        //ITERATING THROUGH THE ROOMS OF THE ROW
+        for (int i = 0; i < row.length; i++)
+        {
+          if (drawingRowIndex == 0) //FIRST ROOM ROW
+          {
+            if (i == 0)
+            {
+              if (row[i].shouldBeVisible())
+              {
+                if (row == rooms.first || !rooms[rooms.indexOf(row) - 1][i].shouldBeVisible())
+                {
+                  line.addAll(_getTextSpan("╔", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                }
+                else
+                {
+                  line.addAll(_getTextSpan("╠", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                }
+              }
+              else if (row != rooms.first && rooms[rooms.indexOf(row) - 1][i].shouldBeVisible())
+              {
+                line.addAll(_getTextSpan("╚", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+              }
+              else
+              {
+                line.addAll(_getTextSpan(" ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+              }
+            }
+            else
+            {
+              if (row == rooms.first)
+              {
+                if (!row[i].shouldBeVisible())
+                {
+                  if (row[i - 1].shouldBeVisible())
+                  {
+                    line.addAll(_getTextSpan("╗", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                  }
+                  else
+                  {
+                    line.addAll(_getTextSpan(" ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                  }
+
+                }
+                else
+                {
+                  line.addAll(_getTextSpan("╦", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                }
+              }
+              else //NOT FIRST ROW, NOT FIRST ROOM
+              {
+                if (!row[i].shouldBeVisible())
+                {
+                  if (row[i - 1].shouldBeVisible())
+                  {
+                    if (!rooms[rooms.indexOf(row) - 1][i].shouldBeVisible() && !rooms[rooms.indexOf(row) - 1][i - 1].shouldBeVisible())
+                    {
+                      line.addAll(_getTextSpan("╗", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                    }
+                    else
+                    {
+                      line.addAll(_getTextSpan("╣", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                    }
+                  }
+                  else
+                  {
+                    if (!rooms[rooms.indexOf(row) - 1][i].shouldBeVisible() && rooms[rooms.indexOf(row) - 1][i - 1].shouldBeVisible())
+                    {
+                      line.addAll(_getTextSpan("╝", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                    }
+                    else if (!rooms[rooms.indexOf(row) - 1][i - 1].shouldBeVisible() && rooms[rooms.indexOf(row) - 1][i].shouldBeVisible())
+                    {
+                      line.addAll(_getTextSpan("╚", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                    }
+                    else if (row[i].shouldBeVisible() || rooms[rooms.indexOf(row) - 1][i].shouldBeVisible())
+                    {
+                      line.addAll(_getTextSpan("╩", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                    }
+                    else
+                    {
+                      line.addAll(_getTextSpan(" ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                    }
+                  }
+                }
+                else
+                {
+                  if (row[i - 1].shouldBeVisible())
+                  {
+                    if (!rooms[rooms.indexOf(row) - 1][i].shouldBeVisible() && !rooms[rooms.indexOf(row) - 1][i - 1].shouldBeVisible())
+                    {
+                      line.addAll(_getTextSpan("╦", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                    }
+                    else
+                    {
+                      line.addAll(_getTextSpan("╬", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                    }
+                  }
+                  else
+                  {
+                    if (!rooms[rooms.indexOf(row) - 1][i].shouldBeVisible() && !rooms[rooms.indexOf(row) - 1][i - 1].shouldBeVisible())
+                    {
+                      line.addAll(_getTextSpan("╔", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                    }
+                    else
+                    {
+                      line.addAll(_getTextSpan("╠", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                    }
+                  }
+                }
+              }
+            }
+            if (!row[i].shouldBeVisible() && (row == rooms.first || !rooms[rooms.indexOf(row) - 1][i].shouldBeVisible()))
+            {
+              line.addAll(_getTextSpan((" " * (colWidths[i])), ConsoleDataState.getTextStyle(CharacterColor.normal)));
+            }
+            else if (row[i].airLockTop != null)
+            {
+               final int wallLength1 = (colWidths[i] - horizontalLockWidth) ~/ 2;
+               final int wallLength2 = (colWidths[i] - horizontalLockWidth) - wallLength1;
+               line.addAll(_getTextSpan(("═" * wallLength1), ConsoleDataState.getTextStyle(CharacterColor.normal)));
+               if (row[i].airLockTop!.isOpen)
+               {
+                 line.addAll(_getTextSpan((" " * horizontalLockWidth), ConsoleDataState.getTextStyle(CharacterColor.red)));
+               }
+               else
+               {
+                 line.addAll(_getTextSpan(("─" * horizontalLockWidth), ConsoleDataState.getTextStyle(CharacterColor.red)));
+               }
+               line.addAll(_getTextSpan(("═" * wallLength2), ConsoleDataState.getTextStyle(CharacterColor.normal)));
+            }
+            else
+            {
+              line.addAll(_getTextSpan(("═" * (colWidths[i])), ConsoleDataState.getTextStyle(CharacterColor.normal)));
+
+            }
+
+            //LAST COLUMN
+            if (i == row.length - 1)
+            {
+              if (row == rooms.first)
+              {
+                if (row[i].shouldBeVisible())
+                {
+                  line.addAll(_getTextSpan("╗", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                }
+                else
+                {
+                  line.addAll(_getTextSpan(" ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                }
+              }
+              else
+              {
+                if (!rooms[rooms.indexOf(row) - 1][i].shouldBeVisible() && row[i].shouldBeVisible())
+                {
+                  line.addAll(_getTextSpan("╗", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                }
+                else if (row[i].shouldBeVisible() && rooms[rooms.indexOf(row) - 1][i].shouldBeVisible())
+                {
+                  line.addAll(_getTextSpan("╣", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                }
+                else if (rooms[rooms.indexOf(row) - 1][i].shouldBeVisible() && !row[i].shouldBeVisible())
+                {
+                  line.addAll(_getTextSpan("╝", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                }
+                else
+                {
+                  line.addAll(_getTextSpan(" ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+                }
+              }
+            }
+          }
+          else //NON-FIRST ROOM ROW
+          {
+            final int wallHeight1 = ((roomHeight - 2) - verticalLockHeight) ~/ 2;
+            if (!row[i].shouldBeVisible() && (i == 0 || !row[i - 1].shouldBeVisible()))
+            {
+              line.addAll(_getTextSpan(" ", ConsoleDataState.getTextStyle(CharacterColor.red)));
+            }
+            else
+            {
+              if (row[i].airLockLeft != null && drawingRowIndex > wallHeight1 && drawingRowIndex < (wallHeight1 + verticalLockHeight + 1))
+              {
+                if (row[i].airLockLeft!.isOpen)
+                {
+                  line.addAll(_getTextSpan(" ", ConsoleDataState.getTextStyle(CharacterColor.red)));
+                }
+                else
+                {
+                  line.addAll(_getTextSpan("│", ConsoleDataState.getTextStyle(CharacterColor.red)));
+                }
+              }
+              else
+              {
+                line.addAll(_getTextSpan("║", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+              }
+            }
+
+            if (drawingRowIndex == 1 && row[i].shouldBeVisible())
+            {
+              final int availableSpace = colWidths[i];
+              if (row[i].name.length > availableSpace)
+              {
+                line.addAll(_getTextSpan(row[i].name.substring(0, availableSpace), ConsoleDataState.getTextStyle(CharacterColor.blue)));
+              }
+              else
+              {
+                final int space1 = (availableSpace - row[i].name.length) ~/ 2;
+                final int space2 = (availableSpace - row[i].name.length) - space1;
+                line.addAll(_getTextSpan(" " * space1, ConsoleDataState.getTextStyle(CharacterColor.gray)));
+                line.addAll(_getTextSpan(row[i].name, ConsoleDataState.getTextStyle(CharacterColor.gray)));
+                line.addAll(_getTextSpan(" " * space2, ConsoleDataState.getTextStyle(CharacterColor.gray)));
+              }
+            }
+            else if (drawingRowIndex == roomHeight - 3 && row[i] == character.currentRoom)
+            {
+               final int space1 = (colWidths[i] - 1) ~/ 2;
+               final int space2 = (colWidths[i] - 1) - space1;
+               line.addAll(_getTextSpan(" " * space1, ConsoleDataState.getTextStyle(CharacterColor.green)));
+               line.addAll(_getTextSpan(Character.drawingChar, ConsoleDataState.getTextStyle(CharacterColor.green)));
+               line.addAll(_getTextSpan(" " * space2, ConsoleDataState.getTextStyle(CharacterColor.green)));
+            }
+            else if (drawingRowIndex == roomHeight - 2 && hasEntityInRoom(row[i]))
+            {
+              final int space1 = (colWidths[i] - 1) ~/ 2;
+              final int space2 = (colWidths[i] - 1) - space1;
+              line.addAll(_getTextSpan(" " * space1, ConsoleDataState.getTextStyle(CharacterColor.purple)));
+              line.addAll(_getTextSpan(Entity.drawingChar, ConsoleDataState.getTextStyle(CharacterColor.purple)));
+              line.addAll(_getTextSpan(" " * space2, ConsoleDataState.getTextStyle(CharacterColor.purple)));
+            }
+            else
+            {
+              final String emptiness = " " * (colWidths[i]);
+              line.addAll(_getTextSpan(emptiness, ConsoleDataState.getTextStyle(CharacterColor.normal)));
+            }
+
+            //LAST COLUMN
+            if (i == row.length - 1 && row[i].shouldBeVisible())
+            {
+              if (row[i].airLockRight != null && drawingRowIndex > wallHeight1 && drawingRowIndex < (wallHeight1 + verticalLockHeight + 1))
+              {
+                if (row[i].airLockRight!.isOpen)
+                {
+                  line.addAll(_getTextSpan(" ", ConsoleDataState.getTextStyle(CharacterColor.red)));
+                }
+                else
+                {
+                  line.addAll(_getTextSpan("│", ConsoleDataState.getTextStyle(CharacterColor.red)));
+                }
+              }
+              else
+              {
+                line.addAll(_getTextSpan("║", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+              }
+            }
+          }
+        }
+        _shipData.add(line);
+      }
+
+      //LAST ROW (extra)
+      if (row == rooms.last)
+      {
+        final List<TextSpan> line = [];
+        line.addAll(_getTextSpan("  ", ConsoleDataState.getTextStyle(CharacterColor.gray)));
+        for (int i = 0; i < row.length; i++)
+        {
+          if (i == 0)
+          {
+            if (!row[i].shouldBeVisible())
+            {
+              line.addAll(_getTextSpan(" ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+            }
+            else
+            {
+              line.addAll(_getTextSpan("╚", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+            }
+          }
+          else
+          {
+            if (!row[i].shouldBeVisible())
+            {
+              if (!row[i - 1].shouldBeVisible())
+              {
+                line.addAll(_getTextSpan(" ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+              }
+              else
+              {
+                line.addAll(_getTextSpan("╝", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+              }
+            }
+            else
+            {
+              if (!row[i - 1].shouldBeVisible())
+              {
+                line.addAll(_getTextSpan("╚", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+              }
+              else
+              {
+                line.addAll(_getTextSpan("╩", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+              }
+            }
+          }
+
+          if (!row[i].shouldBeVisible())
+          {
+            line.addAll(_getTextSpan((" " * (colWidths[i])), ConsoleDataState.getTextStyle(CharacterColor.normal)));
+          }
+          else if (row[i].airLockBottom != null)
+          {
+            final int wallLength1 = (colWidths[i] - horizontalLockWidth) ~/ 2;
+            final int wallLength2 = (colWidths[i] - horizontalLockWidth) - wallLength1;
+            line.addAll(_getTextSpan(("═" * wallLength1), ConsoleDataState.getTextStyle(CharacterColor.normal)));
+            if (row[i].airLockBottom!.isOpen)
+            {
+              line.addAll(_getTextSpan((" " * horizontalLockWidth), ConsoleDataState.getTextStyle(CharacterColor.red)));
+            }
+            else
+            {
+              line.addAll(_getTextSpan(("─" * horizontalLockWidth), ConsoleDataState.getTextStyle(CharacterColor.red)));
+            }
+            line.addAll(_getTextSpan(("═" * wallLength2), ConsoleDataState.getTextStyle(CharacterColor.normal)));
+          }
+          else
+          {
+            line.addAll(_getTextSpan(("═" * (colWidths[i])), ConsoleDataState.getTextStyle(CharacterColor.normal)));
+          }
+          if (i == row.length - 1)
+          {
+            if (!row[i].shouldBeVisible())
+            {
+              line.addAll(_getTextSpan(" ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+            }
+            else
+            {
+              line.addAll(_getTextSpan("╝", ConsoleDataState.getTextStyle(CharacterColor.normal)));
+            }
+          }
+        }
+        _shipData.add(line);
       }
     }
-
-    //locks
-    for (final AirLock lock in locks)
-    {
-      final Point2D curLabelPos = Point2D(x: lock.labelPos.x, y: lock.labelPos.y);
-      for (final String char in lock.name.characters)
-      {
-        if (char == "\n")
-        {
-          curLabelPos.y++;
-          curLabelPos.x = lock.labelPos.x;
-        }
-        else
-        {
-          _shipData[curLabelPos.y][curLabelPos.x] = TextSpan(text: char, style: ConsoleDataState.getTextStyle(CharacterColor.gray));
-          curLabelPos.x++;
-        }
-      }
-
-      final Point2D curLockPos = Point2D(x: lock.lockPos.x, y: lock.lockPos.y);
-      final String horizontalChar = lock.isOpen ? "." : "_";
-      final String verticalChar = lock.isOpen ? ":" : "|";
-      for (int i = 0; i < lock.length; i++)
-      {
-         _shipData[curLockPos.y][curLockPos.x] = TextSpan(text: lock.isVertical ? verticalChar : horizontalChar, style: ConsoleDataState.getTextStyle(CharacterColor.orange));
-         if (lock.isVertical)
-         {
-            curLockPos.y++;
-         }
-         else
-         {
-            curLockPos.x++;
-         }
-      }
-    }
-  }
-
-  List<List<TextSpan>> getShipData()
-  {
-    return _shipData;
-  }
-
-  static List<List<TextSpan>> _getShip()
-  {
-    //LINE 0
-    final List<TextSpan> line0 = [];
-    line0.addAll(_getTextSpan("                    ______ _____ __    _____ _____ ______ ______", ConsoleDataState.getTextStyle(CharacterColor.purple)));
-
-    //LINE 1
-    final List<TextSpan> line1 = [];
-    line1.addAll(_getTextSpan("        .~~~~~~,      ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-    line1.addAll(_getTextSpan("||   ||__  ||    ||__  ||___   ||   ||  ||", ConsoleDataState.getTextStyle(CharacterColor.purple)));
-
-    //LINE 2
-    final List<TextSpan> line2 = [];
-    line2.addAll(_getTextSpan(r"      //        \     ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-    line2.addAll(_getTextSpan("||   ||___ ||___ ||___ ___||   ||   ||__||", ConsoleDataState.getTextStyle(CharacterColor.purple)));
-
-    //LINE 3
-    final List<TextSpan> line3 = [];
-    line3.addAll(_getTextSpan(r"     ||          |  ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-    line3.addAll(_getTextSpan("SIGMA CLASS LIGHT FREIGHTER - DAEDALUS CORP.", ConsoleDataState.getTextStyle(CharacterColor.orange)));
-
-    //LINE 4
-    final List<TextSpan> line4 = [];
-    line4.addAll(_getTextSpan(r"     ||          |                                        _     ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 5
-    final List<TextSpan> line5 = [];
-    line5.addAll(_getTextSpan(r"      \\        /                            /    /      / | /| ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 6
-    final List<TextSpan> line6 = [];
-    line6.addAll(_getTextSpan(r"       \\      /                   _________/    /______/  |< | ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 7
-    final List<TextSpan> line7 = [];
-    line7.addAll(_getTextSpan(r"   _____\\    /              _____/   |               |    | \| ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 8
-    final List<TextSpan> line8 = [];
-    line8.addAll(_getTextSpan(r"  /__/__//    \______       /____/    |                    |    ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 9
-    final List<TextSpan> line9 = [];
-    line9.addAll(_getTextSpan(r"    //         ######\\    /____/     |                    |  /|", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 10
-    final List<TextSpan> line10 = [];
-    line10.addAll(_getTextSpan(r"   //  (             #\\_______/      |               |    | / <", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 11
-    final List<TextSpan> line11 = [];
-    line11.addAll(_getTextSpan(r"  <|  ( O                                             |    |/  <", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 12
-    final List<TextSpan> line12 = [];
-    line12.addAll(_getTextSpan(r"  <|  ( O                ______                       |    |\  <", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 13
-    final List<TextSpan> line13 = [];
-    line13.addAll(_getTextSpan(r"   \\  (             #//   ____\      |__________|    |    | \ <", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 14
-    final List<TextSpan> line14 = [];
-    line14.addAll(_getTextSpan(r"  __\\__       ######//    \____\     |#         |    |    |  \|", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 15
-    final List<TextSpan> line15 = [];
-    line15.addAll(_getTextSpan(r"  \__\__\\    /             \____\    |#              |    |    ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 16
-    final List<TextSpan> line16 = [];
-    line16.addAll(_getTextSpan(r"        //    \                   \___|#____      ____|_   | /| ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 17
-    final List<TextSpan> line17 = [];
-    line17.addAll(_getTextSpan(r"       //      \                            \    \      \  |< | ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 18
-    final List<TextSpan> line18 = [];
-    line18.addAll(_getTextSpan(r"      //        \                            \____\      \_| \| ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 19
-    final List<TextSpan> line19 = [];
-    line19.addAll(_getTextSpan(r"     ||          |                                              ", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 20
-    final List<TextSpan> line20 = [];
-    line20.addAll(_getTextSpan(r"     ||          |                                  ,,,,,,,,,,,,", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 21
-    final List<TextSpan> line21 = [];
-    line21.addAll(_getTextSpan(r"      \\        /                                   : TOP VIEW :", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    //LINE 22
-    final List<TextSpan> line22 = [];
-    line22.addAll(_getTextSpan(r"        `~~~~~~´                                    ‘‘‘‘‘‘‘‘‘‘‘‘", ConsoleDataState.getTextStyle(CharacterColor.normal)));
-
-    List<List<TextSpan>> shipData = [
-      line0,
-      line1,
-      line2,
-      line3,
-      line4,
-      line5,
-      line6,
-      line7,
-      line8,
-      line9,
-      line10,
-      line11,
-      line12,
-      line13,
-      line14,
-      line15,
-      line16,
-      line17,
-      line18,
-      line19,
-      line20,
-      line21,
-      line22
-    ];
-
-    return shipData;
-
   }
 
   static List<TextSpan> _getTextSpan(final String text, final TextStyle style)
@@ -341,70 +847,10 @@ class ShipStatus
     return spanList;
   }
 
-  AirLock? getLockByName(final String lockName)
+  List<List<TextSpan>> getShipData()
   {
-    return locks.where((l) => l.id.toUpperCase() == lockName.toUpperCase()).firstOrNull;
+    return _shipData;
   }
 
-  static List<List<Room>> _getConnectedAreas(final List<Room> rooms, final List<AirLock> locks)
-  {
-    // Build an adjacency list for the graph
-    final Map<Room, List<Room>> adjacencyList = {};
-    for (var room in rooms) {
-      adjacencyList[room] = [];
-    }
 
-    // Add edges for open connections
-    for (final AirLock lock in locks) {
-      if (lock.isOpen && lock.room1 != null && lock.room2 != null) {
-        adjacencyList[lock.room1]!.add(lock.room2!);
-        adjacencyList[lock.room2]!.add(lock.room1!);
-      }
-    }
-
-    // To store visited rooms
-    final Set<Room> visited = {};
-    final List<List<Room>> connectedAreas = [];
-
-    // Helper function for DFS
-    void dfs(Room room, List<Room> currentArea) {
-      visited.add(room);
-      currentArea.add(room);
-      for (var neighbor in adjacencyList[room]!) {
-        if (!visited.contains(neighbor)) {
-          dfs(neighbor, currentArea);
-        }
-      }
-    }
-
-    // Find all connected components
-    for (var room in rooms) {
-      if (!visited.contains(room)) {
-        final List<Room> currentArea = [];
-        dfs(room, currentArea);
-        connectedAreas.add(currentArea);
-      }
-    }
-
-    return connectedAreas;
-  }
-
-  void getCollectionFromRoom(final List<Room> collection, final Room room)
-  {
-    locks.where((l) => l.room1 == room || l.room2 == room).toList();
-  }
-
-  bool roomIsInACollection(final List<List<Room>> collection, final Room r)
-  {
-    bool isInCollection = false;
-    for (final List<Room> roomList in collection)
-    {
-      if (roomList.contains(r))
-      {
-        isInCollection = true;
-        break;
-      }
-    }
-    return isInCollection;
-  }
 }

@@ -3,7 +3,7 @@ import 'dart:collection';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 import 'package:rpg_terminal/answers.dart';
 import 'package:rpg_terminal/ship_status.dart';
 
@@ -48,7 +48,7 @@ class OutputElement
 
 class ConsoleDataState with ChangeNotifier
 {
-  final ValueNotifier<ConsoleState> consoleStateNotifier = ValueNotifier(ConsoleState.none);
+  final ValueNotifier<ConsoleState> consoleStateNotifier = ValueNotifier(ConsoleState.input);
 
   ConsoleState get consoleState
   {
@@ -61,8 +61,9 @@ class ConsoleDataState with ChangeNotifier
 
   bool firstRun = true;
   bool showsCursor = false;
-  static final double fontSize = 32.0;
-  static final TextStyle _defaultStyle = GoogleFonts.vt323();
+  static final double fontSize = 24.0;
+  //static final TextStyle _defaultStyle = GoogleFonts.vt323().copyWith(height: 0.9, letterSpacing: 0.0);
+  static final TextStyle _defaultStyle = TextStyle(fontFamily: "ModernDos");
   static final Map<CharacterColor, TextStyle> _textStyleMap =
   {
     CharacterColor.normal: _defaultStyle.copyWith(color: Color.fromARGB(255, 150, 140, 130), fontSize: fontSize),
@@ -81,6 +82,7 @@ class ConsoleDataState with ChangeNotifier
   late TextSpan prefix = TextSpan(text: "\n[USER_@_M0TH3R5H1P]: ", style: _textStyleMap[CharacterColor.orange]);
 
   bool _samplesCreated = false;
+  bool _levelLoaded = false;
   final AudioPlayer _bgMusicPlayer = AudioPlayer();
   final AudioPlayer _startUpMusicPlayer = AudioPlayer();
   final AudioPlayer _shutdownMusicPlayer = AudioPlayer();
@@ -97,7 +99,7 @@ class ConsoleDataState with ChangeNotifier
     SoundType.startup: "sounds/BootUp.wav",
   };
 
-  final ShipStatus shipStatus = ShipStatus.defaultLayout();
+  late ShipStatus shipStatus;
 
   ConsoleDataState()
   {
@@ -110,6 +112,7 @@ class ConsoleDataState with ChangeNotifier
     },);
 
     loadSamples();
+    loadLevel();
   }
 
   static TextStyle getTextStyle(final CharacterColor color)
@@ -127,6 +130,13 @@ class ConsoleDataState with ChangeNotifier
     await _outputMusicPlayer.setReleaseMode(ReleaseMode.stop);
 
     _samplesCreated = true;
+  }
+
+  Future<void> loadLevel() async
+  {
+    final String levelText = await rootBundle.loadString('assets/levels/level1.txt');
+    shipStatus = ShipStatus.fromFileData(levelText);
+    _levelLoaded = true;
   }
 
   void addOutputData({required final String text, required final CharacterColor color, final bool singleCharacterMode = true})
@@ -222,7 +232,7 @@ class ConsoleDataState with ChangeNotifier
     }
     else if (_currentInput.text != null && _currentInput.text!.isNotEmpty)
     {
-      addOutputData(text: "\nYou entered ", color: CharacterColor.normal);
+      addOutputData(text: "\nUnknown command: ", color: CharacterColor.normal);
       addOutputData(text: _currentInput.text!, color: CharacterColor.purple);
     }
     if (_currentInput.text == "shutdown")

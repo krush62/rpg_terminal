@@ -25,8 +25,8 @@ class Answers
     TerminalCommand(command: "help", description: "Show this help screen", function: addHelpMessage),
     TerminalCommand(command: "shutdown", description: "Shutdown of the system"),
     TerminalCommand(command: "map", description: "Show the map of the ship", function: showMap),
-    TerminalCommand(command: "open", description: "Open specified air lock", function: openLock),
-    TerminalCommand(command: "close", description: "Close specified air lock", function: closeLock),
+    TerminalCommand(command: "move", description: "Move the character to specified room/coordinate", function: move),
+    TerminalCommand(command: "interact", description: "Lets the character interact with the current room."),
   ];
 
   static void addHelpMessage(final ConsoleDataState state, String args)
@@ -67,64 +67,50 @@ class Answers
     }
   }
 
-
-
-  static void openLock(final ConsoleDataState state, String args)
+  static void move(final ConsoleDataState state, String args)
   {
-    AirLock? lock = state.shipStatus.getLockByName(args);
-    if (lock == null)
+    if (args.isNotEmpty)
     {
-      state.addOutputData(text: "\nCould not find air lock with name ", color: CharacterColor.normal);
-      state.addOutputData(text: args, color: CharacterColor.purple);
-      state.addOutputData(text: ".", color: CharacterColor.normal);
-    }
-    else
-    {
-      if (lock.isOpen)
+      final Room? r = state.shipStatus.getRoomByName(roomName: args);
+      if (r != null)
       {
-        state.addOutputData(text: "\nAir lock ", color: CharacterColor.normal);
-        state.addOutputData(text: lock.id, color: CharacterColor.purple);
-        state.addOutputData(text: " is already open.", color: CharacterColor.normal);
+        final List<Room> allNeighborRooms = state.shipStatus.getNeighbouringRooms(false);
+        final List<Room> openNeighborRooms = state.shipStatus.getNeighbouringRooms(true);
+        if (allNeighborRooms.contains(r))
+        {
+          if (openNeighborRooms.contains(r))
+          {
+            state.addOutputData(text: "\nMoving to room ", color: CharacterColor.normal);
+            state.addOutputData(text: "${r.name}\n", color: CharacterColor.purple);
+            state.shipStatus.character.currentRoom = r;
+            state.shipStatus.updateShipData();
+          }
+          else
+          {
+            state.addOutputData(text: "\nDoor to room ", color: CharacterColor.normal);
+            state.addOutputData(text: r.name, color: CharacterColor.purple);
+            state.addOutputData(text: " is locked!", color: CharacterColor.normal);
+          }
+        }
+        else
+        {
+          state.addOutputData(text: "\nCannot reach ", color: CharacterColor.normal);
+          state.addOutputData(text: "${r.name}\n", color: CharacterColor.purple);
+        }
       }
       else
       {
-        state.addOutputData(text: "\nOpened air lock ", color: CharacterColor.normal);
-        state.addOutputData(text: lock.id, color: CharacterColor.purple);
-        state.addOutputData(text: ".", color: CharacterColor.normal);
-        lock.isOpen = true;
-        state.shipStatus.updateShipData();
+        state.addOutputData(text: "\nCould not find room ", color: CharacterColor.normal);
+        state.addOutputData(text: "$args\n", color: CharacterColor.purple);
       }
-    }
-  }
-
-  static void closeLock(final ConsoleDataState state, String args)
-  {
-    AirLock? lock = state.shipStatus.getLockByName(args);
-    if (lock == null)
-    {
-      state.addOutputData(text: "\nCould not find air lock with name ", color: CharacterColor.normal);
-      state.addOutputData(text: args, color: CharacterColor.purple);
-      state.addOutputData(text: ".", color: CharacterColor.normal);
     }
     else
     {
-      if (!lock.isOpen)
-      {
-        state.addOutputData(text: "\nAir lock ", color: CharacterColor.normal);
-        state.addOutputData(text: lock.id, color: CharacterColor.purple);
-        state.addOutputData(text: " is already closed.", color: CharacterColor.normal);
-      }
-      else
-      {
-        state.addOutputData(text: "\nClosed air lock ", color: CharacterColor.normal);
-        state.addOutputData(text: lock.id, color: CharacterColor.purple);
-        state.addOutputData(text: ".", color: CharacterColor.normal);
-        lock.isOpen = false;
-        state.shipStatus.updateShipData();
-      }
+      state.addOutputData(text: "\nPlease specify the room to move to!\n", color: CharacterColor.normal);
     }
 
   }
+
 
   static TerminalCommand? getCommand(String inputLine)
   {
