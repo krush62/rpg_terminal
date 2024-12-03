@@ -140,15 +140,16 @@ class ShipStatus
     return ShipStatus(rooms: [row1, row2, row3], character: character, entities: entities);
   }
 
-  factory ShipStatus.fromFileData(String fileData)
+  factory ShipStatus.fromFileData(String fileData, BuildContext context)
   {
     final LineSplitter ls = LineSplitter();
     final List<String> fileLines = ls.convert(fileData);
     int? width;
     int? height;
-    Character? character = null;
+    Character? character;
     final List<Entity> entities = [];
     final List<List<Room>> rooms = [];
+    String errorMessage = "";
 
     for (final String line in fileLines)
     {
@@ -175,7 +176,7 @@ class ShipStatus
                 final int rowIndex = int.parse(split[2]) - 1;
                 if (colIndex < 0 || colIndex > width - 1 || rowIndex < 0 || rowIndex > height - 1)
                 {
-                  print("CHARACTER LOCATION OUT OF BOUNDS! ${split[1]} ${split[2]}");
+                  errorMessage = ("CHARACTER LOCATION OUT OF BOUNDS! ${split[1]} ${split[2]}");
                   break;
                 }
                 else if (rooms[rowIndex][colIndex].roomType != RoomType.noRoom)
@@ -184,19 +185,19 @@ class ShipStatus
                 }
                 else
                 {
-                  print("CHARACTER MUST BE IN VALID ROOM! ${split[1]} ${split[2]}");
+                  errorMessage = ("CHARACTER MUST BE IN VALID ROOM! ${split[1]} ${split[2]}");
                   break;
                 }
               }
               else
               {
-                print("ONLY ONE CHARACTER CAN BE DEFINED!!");
+                errorMessage = ("ONLY ONE CHARACTER CAN BE DEFINED!!");
                 break;
               }
             }
             else
             {
-              print("DIMENSIONS AND ROOMS MUST BE DEFINED BEFORE CHARACTER!");
+              errorMessage = ("DIMENSIONS AND ROOMS MUST BE DEFINED BEFORE CHARACTER!");
               break;
             }
           }
@@ -208,7 +209,7 @@ class ShipStatus
               final int rowIndex = int.parse(split[2]) - 1;
               if (colIndex < 0 || colIndex > width - 1 || rowIndex < 0 || rowIndex > height - 1)
               {
-                print("ENTITY LOCATION OUT OF BOUNDS! ${split[1]} ${split[2]}");
+                errorMessage = ("ENTITY LOCATION OUT OF BOUNDS! ${split[1]} ${split[2]}");
                 break;
               }
               else if (rooms[rowIndex][colIndex].roomType != RoomType.noRoom)
@@ -217,13 +218,13 @@ class ShipStatus
               }
               else
               {
-                print("ENTITY MUST BE IN VALID ROOM! ${split[1]} ${split[2]}");
+                errorMessage = ("ENTITY MUST BE IN VALID ROOM! ${split[1]} ${split[2]}");
                 break;
               }
             }
             else
             {
-              print("DIMENSIONS AND ROOMS MUST BE DEFINED BEFORE ENTITIES!");
+              errorMessage = ("DIMENSIONS AND ROOMS MUST BE DEFINED BEFORE ENTITIES!");
               break;
             }
           }
@@ -246,6 +247,13 @@ class ShipStatus
               final int colIndex = letters.indexOf(split[2]);
               final int rowIndex = int.parse(split[3]) - 1;
 
+              if (colIndex < 0 || colIndex > width - 1 || rowIndex < 0 || rowIndex > height - 1)
+              {
+                errorMessage = "ROOM IS OUT OF BOUNDS: $line";
+                break;
+              }
+
+
               AirLock? airlockLeft = (split[5][0] == "1" || split[5][0] == "2") ? AirLock(isOpen: split[5][0] == "1" ? false : true) : null;
               if (colIndex > 0 && rooms[rowIndex][colIndex - 1].roomType != RoomType.noRoom)
               {
@@ -253,7 +261,7 @@ class ShipStatus
                     (rooms[rowIndex][colIndex - 1].airLockRight == null && airlockLeft != null) ||
                     (rooms[rowIndex][colIndex - 1].airLockRight != null && airlockLeft != null && rooms[rowIndex][colIndex - 1].airLockRight!.isOpen != airlockLeft.isOpen))
                 {
-                   print("AIRLOCK (LEFT) INCONSISTENCY DETECTED!! $line");
+                  errorMessage = ("AIRLOCK (LEFT) INCONSISTENCY DETECTED!! $line");
                    break;
                 }
                 else
@@ -269,7 +277,7 @@ class ShipStatus
                     (rooms[rowIndex - 1][colIndex].airLockBottom == null && airlockTop != null) ||
                     (rooms[rowIndex - 1][colIndex].airLockBottom != null && airlockTop != null && rooms[rowIndex - 1][colIndex].airLockBottom!.isOpen != airlockTop.isOpen))
                 {
-                  print("AIRLOCK (TOP) INCONSISTENCY DETECTED!! $line");
+                  errorMessage = ("AIRLOCK (TOP) INCONSISTENCY DETECTED!! $line");
                   break;
                 }
                 else
@@ -285,7 +293,7 @@ class ShipStatus
                     (rooms[rowIndex][colIndex + 1].airLockLeft == null && airlockRight != null) ||
                     (rooms[rowIndex][colIndex + 1].airLockLeft != null && airlockRight != null && rooms[rowIndex][colIndex + 1].airLockLeft!.isOpen != airlockRight.isOpen))
                 {
-                  print("AIRLOCK (RIGHT) INCONSISTENCY DETECTED!! $line");
+                  errorMessage = ("AIRLOCK (RIGHT) INCONSISTENCY DETECTED!! $line");
                   break;
                 }
                 else
@@ -301,7 +309,7 @@ class ShipStatus
                     (rooms[rowIndex + 1][colIndex].airLockTop == null && airlockBottom != null) ||
                     (rooms[rowIndex + 1][colIndex].airLockTop != null && airlockBottom != null && rooms[rowIndex + 1][colIndex].airLockTop!.isOpen != airlockBottom.isOpen))
                 {
-                  print("AIRLOCK (BOTTOM) INCONSISTENCY DETECTED!! $line");
+                  errorMessage = ("AIRLOCK (BOTTOM) INCONSISTENCY DETECTED!! $line");
                   break;
                 }
                 else
@@ -317,24 +325,59 @@ class ShipStatus
             }
             else
             {
-              print("SPECIFY DIMENSIONS BEFORE ADDING ROOMS");
+              errorMessage = ("SPECIFY DIMENSIONS BEFORE ADDING ROOMS");
               break;
             }
           }
           else
           {
-            print("Unknown line found: $line");
+            errorMessage = ("Unknown line found: $line");
+            break;
           }
         }
       }
 
     }
-    if (character == null)
+    if (character == null && errorMessage.isEmpty)
     {
-      print("NO CHARACTER SPECIFIED!");
+      errorMessage = ("NO CHARACTER SPECIFIED!");
 
     }
+
+    if (errorMessage.isNotEmpty)
+    {
+      _showErrorDialog(context, "ERROR during level loading", errorMessage);
+    }
+
+
     return ShipStatus(rooms: rooms, character: character!, entities: entities);
+  }
+
+  static Future<void> _showErrorDialog(BuildContext context, String title, String content) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, // user must tap button!
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text(content),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Okay'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
 
@@ -363,23 +406,23 @@ class ShipStatus
   {
     final List<Room> neighborRooms = [];
 
-    final List<Room> currentRow = rooms.where((row) => row.contains(character.currentRoom!)).first;
+    final List<Room> currentRow = rooms.where((row) => row.contains(character.currentRoom)).first;
     final int currentRowIndex = rooms.indexOf(currentRow);
-    final int currentRoomIndex = currentRow.indexOf(character.currentRoom!);
+    final int currentRoomIndex = currentRow.indexOf(character.currentRoom);
 
-    if (character.currentRoom.airLockLeft != null && currentRoomIndex > 0 && rooms[currentRowIndex][currentRoomIndex - 1].airLockRight != null && rooms[currentRowIndex][currentRoomIndex - 1].airLockRight == character.currentRoom!.airLockLeft && (!mustBeOpen || character.currentRoom!.airLockLeft!.isOpen))
+    if (character.currentRoom.airLockLeft != null && currentRoomIndex > 0 && rooms[currentRowIndex][currentRoomIndex - 1].airLockRight != null && rooms[currentRowIndex][currentRoomIndex - 1].airLockRight == character.currentRoom.airLockLeft && (!mustBeOpen || character.currentRoom.airLockLeft!.isOpen))
     {
       neighborRooms.add(rooms[currentRowIndex][currentRoomIndex - 1]);
     }
-    if (character.currentRoom.airLockRight != null && currentRoomIndex < rooms[currentRowIndex].length - 1 && rooms[currentRowIndex][currentRoomIndex + 1].airLockLeft != null && rooms[currentRowIndex][currentRoomIndex + 1].airLockLeft == character.currentRoom!.airLockRight && (!mustBeOpen || character.currentRoom!.airLockRight!.isOpen))
+    if (character.currentRoom.airLockRight != null && currentRoomIndex < rooms[currentRowIndex].length - 1 && rooms[currentRowIndex][currentRoomIndex + 1].airLockLeft != null && rooms[currentRowIndex][currentRoomIndex + 1].airLockLeft == character.currentRoom.airLockRight && (!mustBeOpen || character.currentRoom.airLockRight!.isOpen))
     {
       neighborRooms.add(rooms[currentRowIndex][currentRoomIndex + 1]);
     }
-    if (character.currentRoom.airLockTop != null && currentRowIndex > 0 && rooms[currentRowIndex - 1].length > currentRoomIndex && rooms[currentRowIndex - 1][currentRoomIndex].airLockBottom != null && rooms[currentRowIndex - 1][currentRoomIndex].airLockBottom == character.currentRoom!.airLockTop && (!mustBeOpen || character.currentRoom!.airLockTop!.isOpen))
+    if (character.currentRoom.airLockTop != null && currentRowIndex > 0 && rooms[currentRowIndex - 1].length > currentRoomIndex && rooms[currentRowIndex - 1][currentRoomIndex].airLockBottom != null && rooms[currentRowIndex - 1][currentRoomIndex].airLockBottom == character.currentRoom.airLockTop && (!mustBeOpen || character.currentRoom.airLockTop!.isOpen))
     {
       neighborRooms.add(rooms[currentRowIndex - 1][currentRoomIndex]);
     }
-    if (character.currentRoom.airLockBottom != null && currentRowIndex < rooms.length - 1  && rooms[currentRowIndex + 1].length > currentRoomIndex && rooms[currentRowIndex + 1][currentRoomIndex].airLockTop != null && rooms[currentRowIndex + 1][currentRoomIndex].airLockTop == character.currentRoom!.airLockBottom && (!mustBeOpen || character.currentRoom!.airLockBottom!.isOpen))
+    if (character.currentRoom.airLockBottom != null && currentRowIndex < rooms.length - 1  && rooms[currentRowIndex + 1].length > currentRoomIndex && rooms[currentRowIndex + 1][currentRoomIndex].airLockTop != null && rooms[currentRowIndex + 1][currentRoomIndex].airLockTop == character.currentRoom.airLockBottom && (!mustBeOpen || character.currentRoom.airLockBottom!.isOpen))
     {
       neighborRooms.add(rooms[currentRowIndex + 1][currentRoomIndex]);
     }

@@ -72,7 +72,7 @@ class _RPGTerminalState extends State<RPGTerminal> with SingleTickerProviderStat
 {
   static const double _borderRadius = 16;
   static const Color _terminalBgColor = Color.fromARGB(255, 5, 2, 0);
-  final ConsoleDataState _consoleDataState = ConsoleDataState();
+  late ConsoleDataState _consoleDataState;
 
   late final Ticker _ticker;
   double _elapsedTime = 0.0;
@@ -81,12 +81,14 @@ class _RPGTerminalState extends State<RPGTerminal> with SingleTickerProviderStat
   void initState()
   {
     super.initState();
+    _consoleDataState = ConsoleDataState(context);
     _ticker = Ticker((elapsed) {
       setState(() {
         _elapsedTime = elapsed.inMilliseconds / 1000;
       });
     });
     _ticker.start();
+
   }
 
   @override

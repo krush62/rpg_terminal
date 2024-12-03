@@ -82,7 +82,7 @@ class ConsoleDataState with ChangeNotifier
   late TextSpan prefix = TextSpan(text: "\n[USER_@_M0TH3R5H1P]: ", style: _textStyleMap[CharacterColor.orange]);
 
   bool _samplesCreated = false;
-  bool _levelLoaded = false;
+  //bool _levelLoaded = false;
   final AudioPlayer _bgMusicPlayer = AudioPlayer();
   final AudioPlayer _startUpMusicPlayer = AudioPlayer();
   final AudioPlayer _shutdownMusicPlayer = AudioPlayer();
@@ -101,7 +101,7 @@ class ConsoleDataState with ChangeNotifier
 
   late ShipStatus shipStatus;
 
-  ConsoleDataState()
+  ConsoleDataState(BuildContext context)
   {
     Timer.periodic(const Duration(milliseconds: 500), (timer) {
       _blinkTimeout(timer);
@@ -112,7 +112,7 @@ class ConsoleDataState with ChangeNotifier
     },);
 
     loadSamples();
-    loadLevel();
+    loadLevel(context);
   }
 
   static TextStyle getTextStyle(final CharacterColor color)
@@ -132,11 +132,15 @@ class ConsoleDataState with ChangeNotifier
     _samplesCreated = true;
   }
 
-  Future<void> loadLevel() async
+  Future<void> loadLevel(BuildContext context) async
   {
     final String levelText = await rootBundle.loadString('assets/levels/level1.txt');
-    shipStatus = ShipStatus.fromFileData(levelText);
-    _levelLoaded = true;
+    if (context.mounted)
+    {
+      shipStatus = ShipStatus.fromFileData(levelText, context);
+    }
+
+    //_levelLoaded = true;
   }
 
   void addOutputData({required final String text, required final CharacterColor color, final bool singleCharacterMode = true})
@@ -338,7 +342,7 @@ class ConsoleDataState with ChangeNotifier
           _displayData.addLast(prefix);
           break;
       }
-      print("SWITCHING FROM $consoleState to $targetState");
+      //print("SWITCHING FROM $consoleState to $targetState");
       consoleStateNotifier.value = targetState;
       notifyListeners();
     }
