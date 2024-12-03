@@ -61,7 +61,7 @@ class ConsoleDataState with ChangeNotifier
 
   bool firstRun = true;
   bool showsCursor = false;
-  static final double fontSize = 24.0;
+  static final double fontSize = 16.0;
   static final TextStyle _defaultStyle = TextStyle(fontFamily: "ModernDos");
   static final Map<CharacterColor, TextStyle> _textStyleMap =
   {
@@ -133,10 +133,10 @@ class ConsoleDataState with ChangeNotifier
 
   Future<void> loadLevel(BuildContext context) async
   {
-    final String levelText = await rootBundle.loadString('assets/levels/level1.txt');
+    final String levelText = await rootBundle.loadString('assets/levels/layout1.txt');
     if (context.mounted)
     {
-      shipStatus = ShipStatus.fromFileData(levelText, context);
+      shipStatus = ShipStatus.fromLayoutData(levelText, context);
     }
 
     //_levelLoaded = true;
@@ -231,7 +231,7 @@ class ConsoleDataState with ChangeNotifier
     TerminalCommand? command = Answers.getCommand(_currentInput.text!);
     if (command != null && command.function != null)
     {
-      command.function!(this, Answers.getArgs(_currentInput.text!));
+      command.function!(this, args: Answers.getArgs(_currentInput.text!));
     }
     else if (_currentInput.text != null && _currentInput.text!.isNotEmpty)
     {

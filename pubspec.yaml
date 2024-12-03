@@ -71,6 +71,7 @@ flutter:
     - assets/images/Startup.png
     - assets/images/Shutdown.png
     - assets/levels/level1.txt
+    - assets/levels/layout1.txt
 
   fonts:
     - family: Argon

@@ -1,6 +1,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:rpg_terminal/console_data_state.dart';
@@ -15,24 +16,49 @@ class Point2D
 enum RoomType
 {
   noRoom,
-  general
+  general,
+  weapon,
+  heal1,
+  heal2,
+  reveal3,
+  escape,
+  randomItem
 }
 
 const Map<int, RoomType> intRoomMap =
 {
   0: RoomType.noRoom,
-  1: RoomType.general
+  1: RoomType.general,
+  2: RoomType.weapon,
+  3: RoomType.heal1,
+  4: RoomType.heal2,
+  5: RoomType.reveal3,
+  6: RoomType.escape,
+  7: RoomType.randomItem
+};
+
+const Map<RoomType, String> roomInfoMap =
+{
+  RoomType.noRoom: "There is no room here, go somewhere else.",
+  RoomType.general: "A normal room, nothing special here.",
+  RoomType.weapon: "You can pick up a weapon here.",
+  RoomType.heal1: "Heal 1 HP.",
+  RoomType.heal2: "Heal 2 HPs.",
+  RoomType.reveal3: "Reveal 3 random rooms.",
+  RoomType.escape: "Your starting and finishing point for your mission.",
+  RoomType.randomItem: "Pick up a random item (healing or weapon."
 };
 
 class Room
 {
   final String name;
-  final AirLock? airLockTop;
-  final AirLock? airLockRight;
-  final AirLock? airLockLeft;
-  final AirLock? airLockBottom;
+  AirLock? airLockTop;
+  AirLock? airLockRight;
+  AirLock? airLockLeft;
+  AirLock? airLockBottom;
   final RoomType roomType;
   bool isDetected;
+  bool hasInteraction;
 
   Room({
     required this.name,
@@ -41,6 +67,7 @@ class Room
     this.airLockLeft,
     this.airLockBottom,
     this.isDetected = false,
+    this.hasInteraction = true,
     required this.roomType,
   });
 
@@ -68,10 +95,18 @@ class AirLock
 class Character
 {
   Room currentRoom;
+  int hp;
+  bool hasWeapon;
+  bool hasItem;
   static const drawingChar = "☺";
+  static const maxHP = 3;
+
 
   Character({
     required this.currentRoom,
+    this.hp = Character.maxHP,
+    this.hasWeapon = false,
+    this.hasItem = false
   });
 }
 
@@ -141,7 +176,7 @@ class ShipStatus
     return ShipStatus(rooms: [row1, row2, row3], character: character, entities: entities);
   }
 
-  factory ShipStatus.fromFileData(String fileData, BuildContext context)
+  factory ShipStatus.fromLevelData(String fileData, BuildContext context)
   {
     final LineSplitter ls = LineSplitter();
     final List<String> fileLines = ls.convert(fileData);
@@ -354,6 +389,135 @@ class ShipStatus
     return ShipStatus(rooms: rooms, character: character!, entities: entities);
   }
 
+  factory ShipStatus.fromLayoutData(String layoutData, BuildContext context)
+  {
+    String errorMessage = "";
+    final String roomCharacter = "o";
+    final LineSplitter ls = LineSplitter();
+    final List<String> fileLines = ls.convert(layoutData);
+    Character? character;
+    final List<Entity> entities = [];
+    final List<List<Room>> rooms = [];
+
+    //DETERMINE WIDTH
+    final int width = fileLines.map((s) => s.length).reduce((a, b) => a > b ? a : b);
+    final int height = fileLines.length;
+
+    //CALCULATE ROOM COUNT
+    final int roomCount = fileLines
+        .map((s) => s.split('').where((c) => c == roomCharacter).length) // Count in each string
+        .fold(0, (total, current) => total + current); // Sum up counts
+
+    //CREATE LIST OF AVAILABLE ROOMS
+    List<Room> availableRooms =
+    [
+      Room(name: "ARMORY", roomType: RoomType.weapon),
+      Room(name: "CABINS1", roomType: RoomType.general, hasInteraction: false),
+      Room(name: "CABINS2", roomType: RoomType.general, hasInteraction: false),
+      Room(name: "CANTEEN", roomType: RoomType.heal1),
+      Room(name: "COCKPIT", roomType: RoomType.reveal3),
+      Room(name: "HOSPITAL", roomType: RoomType.heal2),
+      Room(name: "LAB", roomType: RoomType.heal1),
+      Room(name: "ESCAPE POD", roomType: RoomType.escape),
+      Room(name: "STORAGE1", roomType: RoomType.randomItem),
+      Room(name: "STORAGE2", roomType: RoomType.randomItem),
+      Room(name: "ENGINE", roomType: RoomType.general, hasInteraction: false),
+      Room(name: "HIBERNATORIUM", roomType: RoomType.general, hasInteraction: false),
+      Room(name: "PRISON", roomType: RoomType.general, hasInteraction: false),
+      Room(name: "GYM", roomType: RoomType.general, hasInteraction: false),
+      Room(name: "SERVER ROOM", roomType: RoomType.reveal3),
+      Room(name: "HANGAR", roomType: RoomType.general, hasInteraction: false),
+      Room(name: "MAINTENANCE", roomType: RoomType.general, hasInteraction: false),
+    ];
+
+    final int defaultRoomCount = availableRooms.length;
+
+    if (roomCount < availableRooms.length)
+    {
+      errorMessage = "NOT ENOUGH ROOMS AVAILABLE, NEED AT LEAST ${availableRooms.length} ROOMS!";
+    }
+    else
+    {
+      int corridorCounter = 1;
+      for (int i = defaultRoomCount; i <= roomCount; i++)
+      {
+        availableRooms.add(Room(name: "CORRIDOR$corridorCounter", roomType: RoomType.general, hasInteraction: false));
+        corridorCounter++;
+      }
+      final Random random = Random();
+      //CREATE SHIP
+      for (int i = 0; i < height; i++)
+      {
+        final List<Room> row = [];
+        for (int j = 0; j < width; j++)
+        {
+          if (j < fileLines[i].length && fileLines[i][j] == roomCharacter)
+          {
+            final int roomIndex = random.nextInt(availableRooms.length);
+            final Room addRoom = availableRooms.removeAt(roomIndex);
+            row.add(addRoom);
+            if (addRoom.roomType == RoomType.escape)
+            {
+              character = Character(currentRoom: addRoom);
+            }
+          }
+          else
+          {
+            row.add(Room(name: "", roomType: RoomType.noRoom, hasInteraction: false));
+          }
+        }
+        rooms.add(row);
+      }
+
+      //CREATE LOCKS
+      for (int i = 0; i < height; i++)
+      {
+        for (int j = 0; j < width; j++)
+        {
+          final Room room = rooms[i][j];
+          if (room.roomType != RoomType.noRoom)
+          {
+            if (j > 0 && rooms[i][j - 1].roomType != RoomType.noRoom)
+            {
+               room.airLockLeft = rooms[i][j - 1].airLockRight;
+            }
+            if (i > 0 && rooms[i - 1][j].roomType != RoomType.noRoom)
+            {
+              room.airLockTop = rooms[i - 1][j].airLockBottom;
+            }
+            if (j < width - 1 && rooms[i][j + 1].roomType != RoomType.noRoom)
+            {
+              room.airLockRight = AirLock(isOpen: true);
+            }
+            if (i < height - 1 && rooms[i + 1][j].roomType != RoomType.noRoom)
+            {
+              room.airLockBottom = AirLock(isOpen: true);
+            }
+          }
+        }
+      }
+    }
+
+    if (errorMessage.isNotEmpty)
+    {
+      _showErrorDialog(context, "ERROR during level creation", errorMessage);
+    }
+
+    return ShipStatus(rooms: rooms, character: character!, entities: entities);
+
+  }
+
+  List<Room> getUnrevealedRooms()
+  {
+    final List<Room> unrevealedRooms = [];
+    for (final List<Room> row in rooms)
+    {
+      unrevealedRooms.addAll(row.where((r) => (!r.isDetected && r.roomType != RoomType.noRoom)));
+    }
+    return unrevealedRooms;
+  }
+
+
   static Future<void> _showErrorDialog(BuildContext context, String title, String content) async {
     return showDialog<void>(
       context: context,
@@ -389,7 +553,7 @@ class ShipStatus
     required this.entities
   })
   {
-    updateShipData();
+    updateShipData(0);
   }
 
   bool hasEntityInRoom(final Room r)
@@ -462,7 +626,7 @@ class ShipStatus
     return null;
   }
 
-  void updateShipData()
+  void updateShipData(int ap)
   {
     _shipData.clear();
 

@@ -9,8 +9,8 @@ import 'package:rpg_terminal/label_indicator.dart';
 import 'package:rpg_terminal/on_off_button.dart';
 import 'package:rpg_terminal/window_top_bar.dart';
 
-const double windowWidth = 1000;
-const double windowHeight = 1000;
+const double windowWidth = 900;
+const double windowHeight = 800;
 
 void main() {
   runApp(const RPGTerminalApp());
