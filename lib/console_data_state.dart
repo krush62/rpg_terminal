@@ -48,7 +48,7 @@ class OutputElement
 
 class ConsoleDataState with ChangeNotifier
 {
-  final ValueNotifier<ConsoleState> consoleStateNotifier = ValueNotifier(ConsoleState.input);
+  final ValueNotifier<ConsoleState> consoleStateNotifier = ValueNotifier(ConsoleState.output);
 
   ConsoleState get consoleState
   {
@@ -62,7 +62,6 @@ class ConsoleDataState with ChangeNotifier
   bool firstRun = true;
   bool showsCursor = false;
   static final double fontSize = 24.0;
-  //static final TextStyle _defaultStyle = GoogleFonts.vt323().copyWith(height: 0.9, letterSpacing: 0.0);
   static final TextStyle _defaultStyle = TextStyle(fontFamily: "ModernDos");
   static final Map<CharacterColor, TextStyle> _textStyleMap =
   {

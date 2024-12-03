@@ -181,7 +181,7 @@ class _RPGTerminalState extends State<RPGTerminal> with SingleTickerProviderStat
                   Center(
                     child: LabelIndicator(
                         consoleStateNotifier: _consoleDataState.consoleStateNotifier,
-                        textStyle: TextStyle(fontFamily: 'Argon', fontWeight: FontWeight.w500), //GoogleFonts.monoton(),
+                        textStyle: TextStyle(fontFamily: 'Argon', fontWeight: FontWeight.w500),
                         fontSize: 72,
                         text: "mothership",
                     ),

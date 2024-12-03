@@ -1,5 +1,6 @@
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:rpg_terminal/console_data_state.dart';
@@ -369,9 +370,10 @@ class ShipStatus
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('Okay'),
+              child: const Text('EXIT'),
               onPressed: () {
                 Navigator.of(context).pop();
+                exit(-1);
               },
             ),
           ],
