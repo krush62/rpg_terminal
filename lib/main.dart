@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'dart:ui' as ui;
 import 'package:flutter_shaders/flutter_shaders.dart';
-import 'package:rpg_terminal/console_data_state.dart';
-import 'package:rpg_terminal/console_text_widget.dart';
-import 'package:rpg_terminal/label_indicator.dart';
-import 'package:rpg_terminal/on_off_button.dart';
-import 'package:rpg_terminal/window_top_bar.dart';
+import 'package:mcs/console_data_state.dart';
+import 'package:mcs/console_text_widget.dart';
+import 'package:mcs/label_indicator.dart';
+import 'package:mcs/on_off_button.dart';
+import 'package:mcs/window_top_bar.dart';
 
 const double windowWidth = 900;
 const double windowHeight = 800;
@@ -81,7 +81,7 @@ class _RPGTerminalState extends State<RPGTerminal> with SingleTickerProviderStat
   void initState()
   {
     super.initState();
-    _consoleDataState = ConsoleDataState(context);
+    _consoleDataState = ConsoleDataState();
     _ticker = Ticker((elapsed) {
       setState(() {
         _elapsedTime = elapsed.inMilliseconds / 1000;

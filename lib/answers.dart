@@ -2,8 +2,8 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:rpg_terminal/console_data_state.dart';
-import 'package:rpg_terminal/ship_status.dart';
+import 'package:mcs/console_data_state.dart';
+import 'package:mcs/ship_status.dart';
 
 
 
@@ -29,8 +29,9 @@ class Answers
     TerminalCommand(command: "status", description: "Show the map and character status (0 AP)", function: showStatus),
     TerminalCommand(command: "move", description: "Move the character to specified room/coordinate (1 AP)", function: move),
     TerminalCommand(command: "interact", description: "Lets the character interact with the current room. (2 AP)", function: interact),
-    TerminalCommand(command: "take", description: "Lets the character pick up the target item. (2 AP)"),
+    TerminalCommand(command: "take", description: "Lets the character pick up the mission item. (2 AP)", function: take),
     TerminalCommand(command: "info", description: "Displays information about the current room. (0 AP)", function: info),
+    TerminalCommand(command: "mission", description: "Displays information about your mission. (0 AP)", function: mission),
   ];
 
   static void addHelpMessage(final ConsoleDataState state, {String args = ""})
@@ -61,6 +62,38 @@ class Answers
   {
     state.addOutputData(text: "\n${state.shipStatus.character.currentRoom.name}: ", color: CharacterColor.purple);
     state.addOutputData(text: roomInfoMap[state.shipStatus.character.currentRoom.roomType]?? "<NO DATA>", color: CharacterColor.normal);
+  }
+
+  static void mission(final ConsoleDataState state, {String args = ""})
+  {
+    state.addOutputData(text: "\nYOUR MISSION: ", color: CharacterColor.red);
+    state.addOutputData(text: "Get the item from room ", color: CharacterColor.normal);
+    state.addOutputData(text: state.shipStatus.targetRoom.name, color: CharacterColor.purple);
+    state.addOutputData(text: " and return to the escape pod.", color: CharacterColor.normal);
+  }
+
+  static void take(final ConsoleDataState state, {String args = ""})
+  {
+    final charRoom = state.shipStatus.character.currentRoom;
+    if (state.shipStatus.character.hasItem)
+    {
+      state.addOutputData(text: "\nMission item already acquired.", color: CharacterColor.red);
+    }
+    else
+    {
+      if (charRoom == state.shipStatus.targetRoom)
+      {
+        state.addOutputData(text: "\nTook mission item.", color: CharacterColor.green);
+        state.shipStatus.character.hasItem = true;
+        state.shipStatus.updateShipData(2);
+        showStatus(state);
+        state.checkHealth();
+      }
+      else
+      {
+        state.addOutputData(text: "\nMission item is not in this room!", color: CharacterColor.red);
+      }
+    }
   }
 
   static void interact(final ConsoleDataState state, {String args = ""})
@@ -144,8 +177,8 @@ class Answers
           }
           else
           {
-            //TODO
-            state.addOutputData(text: "\nYIPPIEH!!!", color: CharacterColor.green);
+            print("WINNING");
+            state.win();
           }
           break;
         case RoomType.randomItem:
@@ -159,6 +192,7 @@ class Answers
         charRoom.hasInteraction = false;
         state.shipStatus.updateShipData(2);
         showStatus(state);
+        state.checkHealth();
       }
     }
     else
@@ -191,12 +225,12 @@ class Answers
 
     final weaponColor = state.shipStatus.character.hasWeapon ? CharacterColor.green : CharacterColor.yellow;
     final itemColor = state.shipStatus.character.hasItem ? CharacterColor.green : CharacterColor.yellow;
-    state.addOutputData(text: "\nHEALTH: ", color: CharacterColor.normal);
-    state.addOutputData(text: "${state.shipStatus.character.hp}/${Character.maxHP}", color: healthColor);
-    state.addOutputData(text: "\nWEAPON: ", color: CharacterColor.normal);
-    state.addOutputData(text: state.shipStatus.character.hasWeapon ? "EQUIPPED" : "[NONE]", color: weaponColor);
-    state.addOutputData(text: "\nITEM: ", color: CharacterColor.normal);
-    state.addOutputData(text: "${state.shipStatus.character.hasItem ? "COLLECTED" : "[NOT FOUND]"}\n", color: itemColor);
+    state.addOutputData(text: "\nHEALTH: ", color: CharacterColor.normal, singleCharacterMode: false);
+    state.addOutputData(text: "${state.shipStatus.character.hp}/${Character.maxHP}", color: healthColor, singleCharacterMode: false);
+    state.addOutputData(text: "\nWEAPON: ", color: CharacterColor.normal, singleCharacterMode: false);
+    state.addOutputData(text: state.shipStatus.character.hasWeapon ? "EQUIPPED" : "[NONE]", color: weaponColor, singleCharacterMode: false);
+    state.addOutputData(text: "\nITEM: ", color: CharacterColor.normal, singleCharacterMode: false);
+    state.addOutputData(text: "${state.shipStatus.character.hasItem ? "COLLECTED" : "[NOT FOUND]"}\n", color: itemColor, singleCharacterMode: false);
   }
 
   static void move(final ConsoleDataState state, {required String args})
@@ -206,8 +240,8 @@ class Answers
       final Room? r = state.shipStatus.getRoomByName(roomName: args);
       if (r != null)
       {
-        final List<Room> allNeighborRooms = state.shipStatus.getNeighbouringRooms(false);
-        final List<Room> openNeighborRooms = state.shipStatus.getNeighbouringRooms(true);
+        final List<Room> allNeighborRooms = state.shipStatus.getNeighbouringRooms(state.shipStatus.character.currentRoom, false);
+        final List<Room> openNeighborRooms = state.shipStatus.getNeighbouringRooms(state.shipStatus.character.currentRoom, true);
         if (allNeighborRooms.contains(r))
         {
           if (openNeighborRooms.contains(r))
@@ -217,6 +251,7 @@ class Answers
             state.shipStatus.character.currentRoom = r;
             state.shipStatus.updateShipData(1);
             showStatus(state);
+            state.checkHealth();
           }
           else
           {
@@ -281,7 +316,6 @@ class Answers
   {
     addBigHeader(state);
     state.addOutputData(text: "\nWelcome to the Mothership Communication System (MCS) v6.2\n", color: CharacterColor.green);
-    state.addOutputData(text: "\nYOUR MISSION\n", color: CharacterColor.red);
     state.addOutputData(text: "\nEnter your command. Type ", color: CharacterColor.normal);
     state.addOutputData(text: "help", color: CharacterColor.purple);
     state.addOutputData(text: " for a list of available commands.\n", color: CharacterColor.normal);

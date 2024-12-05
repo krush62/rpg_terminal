@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:rpg_terminal/console_data_state.dart';
+import 'package:mcs/console_data_state.dart';
 
 class ConsoleTextWidget extends StatefulWidget {
   const ConsoleTextWidget({super.key, required this.consoleDataState});
@@ -56,7 +56,8 @@ class _ConsoleTextWidgetState extends State<ConsoleTextWidget>
             }
           },
           child: Builder(
-            builder: (final BuildContext context) {
+            builder: (final BuildContext context)
+            {
               if (widget.consoleDataState.consoleState == ConsoleState.start)
               {
                 return Image.asset("assets/images/Startup.png", fit: BoxFit.contain);
@@ -64,6 +65,14 @@ class _ConsoleTextWidgetState extends State<ConsoleTextWidget>
               else if (widget.consoleDataState.consoleState == ConsoleState.shutdown)
               {
                 return Image.asset("assets/images/Shutdown.png", fit: BoxFit.contain);
+              }
+              else if (widget.consoleDataState.consoleState == ConsoleState.win)
+              {
+                return Image.asset("assets/images/Winning.png", fit: BoxFit.contain);
+              }
+              else if (widget.consoleDataState.consoleState == ConsoleState.lose)
+              {
+                return Image.asset("assets/images/Losing.png", fit: BoxFit.contain);
               }
               else
               {

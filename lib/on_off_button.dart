@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:rpg_terminal/console_data_state.dart';
+import 'package:mcs/console_data_state.dart';
 
 class OnOffButton extends StatefulWidget {
   const OnOffButton({super.key, required this.consoleStateNotifier, required this.pressCallback, required this.buttonWidth, required this.buttonHeight});

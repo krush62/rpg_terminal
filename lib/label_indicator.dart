@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:rpg_terminal/console_data_state.dart';
+import 'package:mcs/console_data_state.dart';
 
 class LabelIndicator extends StatefulWidget {
   final ValueNotifier<ConsoleState> consoleStateNotifier;

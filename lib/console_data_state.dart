@@ -4,8 +4,8 @@ import 'dart:collection';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:rpg_terminal/answers.dart';
-import 'package:rpg_terminal/ship_status.dart';
+import 'package:mcs/answers.dart';
+import 'package:mcs/ship_status.dart';
 
 enum ConsoleState
 {
@@ -13,7 +13,9 @@ enum ConsoleState
   start,
   output,
   input,
-  shutdown
+  shutdown,
+  win,
+  lose
 }
 
 enum CharacterColor
@@ -48,7 +50,7 @@ class OutputElement
 
 class ConsoleDataState with ChangeNotifier
 {
-  final ValueNotifier<ConsoleState> consoleStateNotifier = ValueNotifier(ConsoleState.output);
+  final ValueNotifier<ConsoleState> consoleStateNotifier = ValueNotifier(ConsoleState.none);
 
   ConsoleState get consoleState
   {
@@ -100,7 +102,7 @@ class ConsoleDataState with ChangeNotifier
 
   late ShipStatus shipStatus;
 
-  ConsoleDataState(BuildContext context)
+  ConsoleDataState()
   {
     Timer.periodic(const Duration(milliseconds: 500), (timer) {
       _blinkTimeout(timer);
@@ -111,8 +113,9 @@ class ConsoleDataState with ChangeNotifier
     },);
 
     loadSamples();
-    loadLevel(context);
+    loadLevel();
   }
+
 
   static TextStyle getTextStyle(final CharacterColor color)
   {
@@ -131,13 +134,10 @@ class ConsoleDataState with ChangeNotifier
     _samplesCreated = true;
   }
 
-  Future<void> loadLevel(BuildContext context) async
+  Future<void> loadLevel() async
   {
     final String levelText = await rootBundle.loadString('assets/levels/layout1.txt');
-    if (context.mounted)
-    {
-      shipStatus = ShipStatus.fromLayoutData(levelText, context);
-    }
+    shipStatus = ShipStatus.fromLayoutData(levelText);
 
     //_levelLoaded = true;
   }
@@ -164,7 +164,7 @@ class ConsoleDataState with ChangeNotifier
     {
       _switchState(ConsoleState.start);
     }
-    else if (consoleState == ConsoleState.input || consoleState == ConsoleState.output)
+    else if (consoleState == ConsoleState.input || consoleState == ConsoleState.output || consoleState == ConsoleState.win || consoleState == ConsoleState.lose)
     {
       _prepareShutdown();
     }
@@ -242,7 +242,7 @@ class ConsoleDataState with ChangeNotifier
     {
       _prepareShutdown();
     }
-    else
+    else if (consoleState != ConsoleState.win && consoleState != ConsoleState.lose && consoleState != ConsoleState.shutdown)
     {
       _switchState(ConsoleState.output);
     }
@@ -301,6 +301,24 @@ class ConsoleDataState with ChangeNotifier
     }
   }
 
+  void lose()
+  {
+    _switchState(ConsoleState.lose);
+  }
+
+  void win()
+  {
+    _switchState(ConsoleState.win);
+  }
+
+  void checkHealth()
+  {
+    if (shipStatus.character.hp <= 0)
+    {
+      _switchState(ConsoleState.lose);
+    }
+  }
+
 
   void _switchState(final ConsoleState targetState)
   {
@@ -320,6 +338,7 @@ class ConsoleDataState with ChangeNotifier
         case ConsoleState.none:
           break;
         case ConsoleState.start:
+          loadLevel();
           _startUpMusicPlayer.onPlayerComplete.listen((event) {
             _switchState(ConsoleState.output);
           });
@@ -335,13 +354,18 @@ class ConsoleDataState with ChangeNotifier
           if (consoleState == ConsoleState.start)
           {
             Answers.addGreeting(this);
+            Answers.mission(this);
           }
           break;
         case ConsoleState.input:
           _displayData.addLast(prefix);
           break;
+        case ConsoleState.win:
+          break;
+        case ConsoleState.lose:
+          break;
       }
-      //print("SWITCHING FROM $consoleState to $targetState");
+      print("SWITCHING FROM $consoleState to $targetState");
       consoleStateNotifier.value = targetState;
       notifyListeners();
     }
